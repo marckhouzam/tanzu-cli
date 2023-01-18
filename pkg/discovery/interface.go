@@ -11,7 +11,9 @@ package discovery
 import (
 	"errors"
 
+	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	configapi "github.com/vmware-tanzu/tanzu-plugin-runtime/apis/config/v1alpha1"
+	"github.com/vmware-tanzu/tanzu-plugin-runtime/config"
 )
 
 // Discovery is the interface to fetch the list of available plugins
@@ -33,6 +35,9 @@ type Discovery interface {
 func CreateDiscoveryFromV1alpha1(pd configapi.PluginDiscovery) (Discovery, error) {
 	switch {
 	case pd.OCI != nil:
+		if config.IsFeatureActivated(constants.FeatureCentralRepository) {
+			return NewOCI2Discovery(pd.OCI.Name, pd.OCI.Image), nil
+		}
 		return NewOCIDiscovery(pd.OCI.Name, pd.OCI.Image), nil
 	case pd.Local != nil:
 		return NewLocalDiscovery(pd.Local.Name, pd.Local.Path), nil
