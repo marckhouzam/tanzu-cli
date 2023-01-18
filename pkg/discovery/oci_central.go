@@ -15,9 +15,9 @@ import (
 	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
 )
 
-// OCIDiscovery2 is an artifact discovery endpoint utilizing an OCI image
+// OCIDiscoveryForCentralRepo is an artifact discovery endpoint utilizing an OCI image
 // which contains an SQLite database listing all available plugins.
-type OCIDiscovery2 struct {
+type OCIDiscoveryForCentralRepo struct {
 	// name is a name of the discovery
 	name string
 	// image is an OCI compliant image. Which include DNS-compatible registry name,
@@ -27,21 +27,22 @@ type OCIDiscovery2 struct {
 	image string
 }
 
-// NewOCIDiscovery2 returns a new local repository.
-func NewOCIDiscovery2(name, image string) Discovery {
-	return &OCIDiscovery2{
+// NewOCIDiscoveryForCentralRepo returns a new Discovery targeting the
+// format of the Central Repository.
+func NewOCIDiscoveryForCentralRepo(name, image string) Discovery {
+	return &OCIDiscoveryForCentralRepo{
 		name:  name,
 		image: image,
 	}
 }
 
 // List available plugins.
-func (od *OCIDiscovery2) List() (plugins []Discovered, err error) {
+func (od *OCIDiscoveryForCentralRepo) List() (plugins []Discovered, err error) {
 	return od.Manifest()
 }
 
 // Describe a plugin.
-func (od *OCIDiscovery2) Describe(name string) (p Discovered, err error) {
+func (od *OCIDiscoveryForCentralRepo) Describe(name string) (p Discovered, err error) {
 	plugins, err := od.Manifest()
 	if err != nil {
 		return
@@ -58,26 +59,28 @@ func (od *OCIDiscovery2) Describe(name string) (p Discovered, err error) {
 }
 
 // Name of the repository.
-func (od *OCIDiscovery2) Name() string {
+func (od *OCIDiscoveryForCentralRepo) Name() string {
 	return od.name
 }
 
 // Type of the discovery.
-func (od *OCIDiscovery2) Type() string {
+func (od *OCIDiscoveryForCentralRepo) Type() string {
 	return common.DiscoveryTypeOCI
 }
 
 // Manifest returns the manifest for a local repository.
-func (od *OCIDiscovery2) Manifest() ([]Discovered, error) {
-	outputData, err := carvelhelpers.ProcessCarvelPackage(od.image)
+func (od *OCIDiscoveryForCentralRepo) Manifest() ([]Discovered, error) {
+	//pkgDir
+	_, err := carvelhelpers.DownloadImageBundleAndSaveFilesToTempDir(od.image)
 	if err != nil {
-		return nil, errors.Wrap(err, "error while processing package")
+		return nil, errors.Wrap(err, "failed to get database file from discovery")
 	}
+	// defer os.RemoveAll(pkgDir)
 
-	return processDiscoveryManifestData(outputData, od.name)
+	return nil, nil //processDiscoveryManifestData2(outputData, od.name)
 }
 
-func processDiscoveryManifestData(data []byte, discoveryName string) ([]Discovered, error) {
+func processDiscoveryManifestData2(data []byte, discoveryName string) ([]Discovered, error) {
 	plugins := make([]Discovered, 0)
 
 	for _, resourceYAML := range strings.Split(string(data), "---") {

@@ -36,7 +36,7 @@ func CreateDiscoveryFromV1alpha1(pd configapi.PluginDiscovery) (Discovery, error
 	switch {
 	case pd.OCI != nil:
 		if config.IsFeatureActivated(constants.FeatureCentralRepository) {
-			return NewOCI2Discovery(pd.OCI.Name, pd.OCI.Image), nil
+			return NewOCIDiscoveryForCentralRepo(pd.OCI.Name, pd.OCI.Image), nil
 		}
 		return NewOCIDiscovery(pd.OCI.Name, pd.OCI.Image), nil
 	case pd.Local != nil:
