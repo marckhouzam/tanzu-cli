@@ -4,12 +4,7 @@
 package discovery
 
 import (
-	"strings"
-
 	"github.com/pkg/errors"
-	apimachineryjson "k8s.io/apimachinery/pkg/runtime/serializer/json"
-
-	cliv1alpha1 "github.com/vmware-tanzu/tanzu-framework/apis/cli/v1alpha1"
 
 	"github.com/vmware-tanzu/tanzu-cli/pkg/carvelhelpers"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
@@ -70,41 +65,10 @@ func (od *OCIDiscoveryForCentralRepo) Type() string {
 
 // Manifest returns the manifest for a local repository.
 func (od *OCIDiscoveryForCentralRepo) Manifest() ([]Discovered, error) {
-	//pkgDir
-	_, err := carvelhelpers.DownloadImageBundleAndSaveFilesToTempDir(od.image)
+	err := carvelhelpers.DownloadDBImageToCache(od.image)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get database file from discovery")
 	}
-	// defer os.RemoveAll(pkgDir)
 
 	return nil, nil //processDiscoveryManifestData2(outputData, od.name)
-}
-
-func processDiscoveryManifestData2(data []byte, discoveryName string) ([]Discovered, error) {
-	plugins := make([]Discovered, 0)
-
-	for _, resourceYAML := range strings.Split(string(data), "---") {
-		scheme, err := cliv1alpha1.SchemeBuilder.Build()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create scheme")
-		}
-		s := apimachineryjson.NewSerializerWithOptions(apimachineryjson.DefaultMetaFactory, scheme, scheme,
-			apimachineryjson.SerializerOptions{Yaml: true, Pretty: false, Strict: false})
-		var p cliv1alpha1.CLIPlugin
-		_, _, err = s.Decode([]byte(resourceYAML), nil, &p)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not decode discovery manifests")
-		}
-
-		dp, err := DiscoveredFromK8sV1alpha1(&p)
-		if err != nil {
-			return nil, err
-		}
-		dp.Source = discoveryName
-		dp.DiscoveryType = common.DiscoveryTypeOCI
-		if dp.Name != "" {
-			plugins = append(plugins, dp)
-		}
-	}
-	return plugins, nil
 }

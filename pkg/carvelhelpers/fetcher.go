@@ -5,6 +5,7 @@ package carvelhelpers
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/vmware-tanzu/tanzu-cli/pkg/clientconfighelpers"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/configpaths"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/registry"
@@ -45,6 +47,23 @@ func DownloadImageBundleAndSaveFilesToTempDir(imageWithTag string) (string, erro
 	}
 
 	return tmpDir, nil
+}
+
+// downloadDBImageToCache reads a plain OCI image and saves its
+// files to a temp directory.  It returns the temp dir location
+func DownloadDBImageToCache(imageWithTag string) error {
+	reg, err := newRegistry()
+	if err != nil {
+		return errors.Wrapf(err, "unable to initialize registry")
+	}
+
+	pluginDBDir := filepath.Join(common.DefaultCacheDir, "plugin_db")
+	err = reg.DownloadImage(imageWithTag, pluginDBDir)
+	if err != nil {
+		return errors.Wrap(err, "error downloading image")
+	}
+
+	return nil
 }
 
 // newRegistry returns a new registry object by also
