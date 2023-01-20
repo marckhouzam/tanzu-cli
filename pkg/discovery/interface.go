@@ -12,6 +12,7 @@ import (
 	"errors"
 
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
+	cliv1alpha1 "github.com/vmware-tanzu/tanzu-framework/apis/cli/v1alpha1"
 	configapi "github.com/vmware-tanzu/tanzu-plugin-runtime/apis/config/v1alpha1"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/config"
 )
@@ -29,6 +30,12 @@ type Discovery interface {
 
 	// Type returns type of discovery.
 	Type() string
+}
+
+type Discovery2 interface {
+	Discovery
+	// List all available versions of the specified plugin
+	ListVersions(name string, target cliv1alpha1.Target) ([]*Discovered, error)
 }
 
 // CreateDiscoveryFromV1alpha1 creates discovery interface from v1alpha1 API
