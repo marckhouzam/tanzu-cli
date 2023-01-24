@@ -160,7 +160,6 @@ func getAllFilesContentFromImage(image regv1.Image) (map[string][]byte, error) {
 //   different registry. And returns original ImageLock file. and as ImageLock file
 //   is pointing to original registry instead of private registry, image references
 //    does not point to the correct location
-
 func (r *registry) DownloadBundle(imageName, outputDir string) error {
 	// Creating a dummy writer to capture the logs
 	// currently this logs are not displayed or used directly
@@ -170,6 +169,30 @@ func (r *registry) DownloadBundle(imageName, outputDir string) error {
 	pullOptions := cmd.NewPullOptions(writerUI)
 	pullOptions.OutputPath = outputDir
 	pullOptions.BundleFlags = cmd.BundleFlags{Bundle: imageName}
+
+	if r.opts != nil {
+		pullOptions.RegistryFlags = cmd.RegistryFlags{
+			CACertPaths: r.opts.CACertPaths,
+			VerifyCerts: r.opts.VerifyCerts,
+			Insecure:    r.opts.Insecure,
+			Anon:        r.opts.Anon,
+		}
+	}
+
+	return pullOptions.Run()
+}
+
+// DownloadImage downloads an OCI image similarly to the `imgpkg pull -i` command
+// It is recommended to use this function when downloading an imgpkg image because
+func (r *registry) DownloadImage(imageName, outputDir string) error {
+	// Creating a dummy writer to capture the logs
+	// currently this logs are not displayed or used directly
+	var outputBuf, errorBuf bytes.Buffer
+	writerUI := ui.NewWriterUI(&outputBuf, &errorBuf, nil)
+
+	pullOptions := cmd.NewPullOptions(writerUI)
+	pullOptions.OutputPath = outputDir
+	pullOptions.ImageFlags = cmd.ImageFlags{Image: imageName}
 
 	if r.opts != nil {
 		pullOptions.RegistryFlags = cmd.RegistryFlags{

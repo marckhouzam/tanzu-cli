@@ -30,3 +30,9 @@ const (
 
 // CoreName is the name of the core binary.
 const CoreName = "core"
+
+const (
+	// CentralRepoDBFileName is the name of the DB file once extracted from the
+	// Central Repository content DB
+	CentralRepoDBFileName = "central.db"
+)

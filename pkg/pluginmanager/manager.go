@@ -585,6 +585,14 @@ func installAndDescribePlugin(p *discovery.Discovered, version string, binary []
 	if err = json.Unmarshal(bytesInfo, &plugin); err != nil {
 		return nil, errors.Wrapf(err, "could not unmarshal plugin %q description", p.Name)
 	}
+
+	// If the plugin were to provide a different name through its "info" command
+	// it could cause a conflict with other plugins.  To enforce naming, we must
+	// make sure the plugin does not impersonate another plugin.
+	if plugin.Name != p.Name {
+		return nil, errors.Errorf("invalid plugin: '%s' reports it is named '%s'", p.Name, plugin.Name)
+	}
+
 	plugin.InstallationPath = pluginPath
 	plugin.Discovery = p.Source
 	plugin.DiscoveredRecommendedVersion = p.RecommendedVersion

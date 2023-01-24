@@ -64,6 +64,11 @@ type Registry struct {
 	invocationsMutex sync.RWMutex
 }
 
+// TODO(khouzam)
+func (fake *Registry) DownloadImage(arg1 string, arg2 string) error {
+	return nil
+}
+
 func (fake *Registry) DownloadBundle(arg1 string, arg2 string) error {
 	fake.downloadBundleMutex.Lock()
 	ret, specificReturn := fake.downloadBundleReturnsOnCall[len(fake.downloadBundleArgsForCall)]
