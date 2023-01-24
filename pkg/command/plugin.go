@@ -26,6 +26,7 @@ import (
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/discovery"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/pluginmanager"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/pluginsupplier"
 )
 
 var (
@@ -94,6 +95,7 @@ func newListPluginCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			var availablePlugins []discovery.Discovered
+			var installedPlugins []cli.PluginInfo
 			if local != "" {
 				// get absolute local path
 				local, err = filepath.Abs(local)
@@ -102,7 +104,12 @@ func newListPluginCmd() *cobra.Command {
 				}
 				availablePlugins, err = pluginmanager.AvailablePluginsFromLocalSource(local)
 			} else {
-				availablePlugins, err = pluginmanager.AvailablePlugins()
+				if config.IsFeatureActivated(constants.FeatureCentralRepository) {
+					installedPlugins, err = pluginsupplier.GetInstalledPlugins()
+					availablePlugins = convertToDiscovered(installedPlugins)
+				} else {
+					availablePlugins, err = pluginmanager.AvailablePlugins()
+				}
 			}
 
 			if err != nil {
@@ -393,4 +400,21 @@ func displayPluginListOutputSplitViewContext(availablePlugins []discovery.Discov
 
 func getTarget() cliv1alpha1.Target {
 	return cliv1alpha1.StringToTarget(strings.ToLower(targetStr))
+}
+
+// TODO(khouzam) may not be needed when "plugin list" is cleaned up
+func convertToDiscovered(plugins []cli.PluginInfo) []discovery.Discovered {
+	discovered := make([]discovery.Discovered, len(plugins))
+	for i, info := range plugins {
+		discovered[i] = discovery.Discovered{
+			Name:             info.Name,
+			Target:           info.Target,
+			Description:      info.Description,
+			Scope:            common.PluginScopeStandalone,
+			DiscoveryType:    common.DiscoveryTypeOCI,
+			InstalledVersion: info.Version,
+			Status:           common.PluginStatusInstalled,
+		}
+	}
+	return discovered
 }
