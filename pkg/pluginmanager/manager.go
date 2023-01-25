@@ -485,6 +485,7 @@ func UpgradePlugin(pluginName, version string, target cliv1alpha1.Target) error 
 // GetRecommendedVersionOfPlugin returns recommended version of the plugin
 func GetRecommendedVersionOfPlugin(pluginName string, target cliv1alpha1.Target) (string, error) {
 	availablePlugins, err := AvailablePlugins()
+	//TODO(khouzam) availablePlugins, err := GetPlugin(pluginName, target)
 	if err != nil {
 		return "", err
 	}

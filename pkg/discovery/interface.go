@@ -25,7 +25,7 @@ type Discovery interface {
 	List() ([]Discovered, error)
 
 	// Describe a plugin.
-	Describe(name string) (Discovered, error)
+	Describe(name string) (Discovered, error) //TODO(khouzam) this is broken.  Need target.
 
 	// Type returns type of discovery.
 	Type() string
