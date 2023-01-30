@@ -35,7 +35,6 @@ Plugins will find that their `make build` command will suffice for most compile 
 
 ```txt
 --artifacts string   path to output artifacts (default "artifacts")
---corepath string    path for core binary
 --ldflags string     ldflags to set on build
 --match string       match a plugin name to build, supports globbing (default "*")
 --path string        path of the plugins directory (default "./cmd/cli/plugin")

@@ -77,12 +77,13 @@ func newPluginBuildCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			compileArgs := &command.PluginCompileArgs{
-				Match:        "*",
-				TargetArch:   pbFlags.OSArch,
-				SourcePath:   pbFlags.PluginDir,
-				ArtifactsDir: pbFlags.ArtifactDir,
-				LDFlags:      pbFlags.LDFlags,
-				Version:      pbFlags.Version,
+				Match:         "*",
+				TargetArch:    pbFlags.OSArch,
+				SourcePath:    pbFlags.PluginDir,
+				ArtifactsDir:  pbFlags.ArtifactDir,
+				LDFlags:       pbFlags.LDFlags,
+				Version:       pbFlags.Version,
+				GroupByOSArch: true,
 			}
 
 			return command.Compile(compileArgs)
