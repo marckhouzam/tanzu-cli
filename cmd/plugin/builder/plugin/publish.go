@@ -47,6 +47,8 @@ type artifactMetadata struct {
 	Arch string
 	// Path is plugin binary path from where we need to publish the plugin
 	Path string
+	// RelativeURI is relative path within the repository for the plugins
+	RelativeURI string
 }
 
 type PublisherImpl interface {
@@ -91,6 +93,8 @@ func (po *PublisherOptions) PublishPlugins() error {
 	}
 
 	log.Info(string(b))
+
+	po.publishPluginsFromPluginArtifacts(mapPluginArtifacts)
 
 	return nil
 }
@@ -169,16 +173,29 @@ func (po *PublisherOptions) getPluginManifest() (*cli.Manifest, error) {
 }
 
 func (po *PublisherOptions) createTempArtifactsDirForPublishing(pluginManifest *cli.Manifest) (map[string]pluginArtifacts, error) {
+	tmpDir, err := os.MkdirTemp("", "")
+	if err != nil {
+		return nil, err
+	}
+
 	mapPluginArtifacts := make(map[string]pluginArtifacts)
 	for i := range pluginManifest.Plugins {
 		for _, osArch := range cli.AllOSArch {
 			for _, version := range pluginManifest.Plugins[i].Versions {
-				pluginFilePath := filepath.Join(po.ArtifactDir, osArch.OS(), osArch.Arch(),
+				locationWithinBaseDir := filepath.Join(osArch.OS(), osArch.Arch(),
 					pluginManifest.Plugins[i].Target, pluginManifest.Plugins[i].Name, version,
 					cli.MakeArtifactName(pluginManifest.Plugins[i].Name, osArch))
 
+				pluginFilePath := filepath.Join(po.ArtifactDir, locationWithinBaseDir)
+				tmpPluginFilePath := filepath.Join(tmpDir, locationWithinBaseDir)
+
 				if !utils.PathExists(pluginFilePath) {
 					continue
+				}
+
+				err := utils.CopyFile(pluginFilePath, tmpPluginFilePath)
+				if err != nil {
+					return nil, err
 				}
 
 				key := fmt.Sprintf("%s-%s", pluginManifest.Plugins[i].Target, pluginManifest.Plugins[i].Name)
@@ -199,11 +216,26 @@ func (po *PublisherOptions) createTempArtifactsDirForPublishing(pluginManifest *
 				am := artifactMetadata{
 					OS:   osArch.OS(),
 					Arch: osArch.Arch(),
-					Path: pluginFilePath,
+					Path: tmpPluginFilePath,
+					RelativeURI: fmt.Sprintf("%s/%s/%s/%s:%s", osArch.OS(), osArch.Arch(),
+						pluginManifest.Plugins[i].Target, pluginManifest.Plugins[i].Name, version),
 				}
 				pa.VersionArtifactMap[version] = append(pa.VersionArtifactMap[version], am)
 			}
 		}
 	}
 	return mapPluginArtifacts, nil
+}
+
+func (po *PublisherOptions) publishPluginsFromPluginArtifacts(mapPluginArtifacts map[string]pluginArtifacts) error {
+	baseRepository := fmt.Sprintf("%s/%s/%s", po.Repository, po.Vendor, po.Publisher)
+	for _, pa := range mapPluginArtifacts {
+		for _, artifacts := range pa.VersionArtifactMap {
+			for _, a := range artifacts {
+				pluginImage := fmt.Sprintf("%s/%s", baseRepository, a.RelativeURI)
+				log.Infof("imgpkg push -i %s -f %s", pluginImage, filepath.Dir(a.Path))
+			}
+		}
+	}
+	return nil
 }

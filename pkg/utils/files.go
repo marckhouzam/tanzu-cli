@@ -33,6 +33,19 @@ func SaveFile(filePath string, data []byte) error {
 	return nil
 }
 
+// CopyFile copies source file to dest file
+func CopyFile(sourceFile, destFile string) error {
+	input, err := os.ReadFile(sourceFile)
+	if err != nil {
+		return err
+	}
+	// create directory structure if missing
+	_ = os.MkdirAll(filepath.Dir(destFile), 0o777)
+
+	err = os.WriteFile(destFile, input, constants.ConfigFilePermissions)
+	return err
+}
+
 // PathExists returns true if file/directory exists otherwise returns false
 func PathExists(dir string) bool {
 	_, err := os.Stat(dir)
