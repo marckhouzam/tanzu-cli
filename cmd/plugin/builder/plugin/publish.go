@@ -4,12 +4,19 @@
 package plugin
 
 import (
+	"fmt"
 	"github.com/aunum/log"
 	"github.com/pkg/errors"
-	"github.com/vmware-tanzu/tanzu-cli/cmd/plugin/builder/types"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/cli"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/publisher"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/utils"
 	"gopkg.in/yaml.v3"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"os"
+	"path/filepath"
 )
+
+const PublisherPluginAssociationURL = "https://gist.githubusercontent.com/anujc25/894c5187b7d1da25490139fe54c1e73f/raw/b0b8f15e70110b857b3b75d0ce4f7ab04b5782c3"
 
 type PublisherOptions struct {
 	ArtifactDir        string
@@ -28,40 +35,103 @@ type PublisherImpl interface {
 
 func (po *PublisherOptions) PublishPlugins() error {
 	log.Infof("Starting plugin publishing process...")
-	log.Infof("Using plugin location: %q, Publisher: %q, Vendor: %q, Repository: %q", po.ArtifactDir, po.Publisher, po.Vendor, po.Repository)
+
+	if po.PluginManifestFile == "" {
+		po.PluginManifestFile = filepath.Join(po.ArtifactDir, cli.PluginManifestFileName)
+	}
+
+	pluginManifest, err := po.getPluginManifest()
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Using plugin location: %q, Publisher: %q, Vendor: %q, Repository: %q, PluginManifest: %q",
+		po.ArtifactDir, po.Publisher, po.Vendor, po.Repository, po.PluginManifestFile)
+
+	log.Info("Verifying plugin artifacts...")
+	if err := po.verifyPluginArtifacts(pluginManifest); err != nil {
+		return errors.Wrap(err, "error while verifying artifacts")
+	}
+	log.Info("Successfully verified plugin artifacts")
+
+	log.Info("Verifying plugin and publisher association...")
+	if err := po.verifyPluginAndPublisherAssociation(pluginManifest); err != nil {
+		return errors.Wrap(err, "error while verifying artifacts")
+	}
+	log.Info("Successfully verified plugin and publisher association")
+
 	return nil
 }
 
-func (po *PublisherOptions) verifyArtifacts() error {
-	log.Info("Verifying artifacts...")
+func (po *PublisherOptions) verifyPluginArtifacts(pluginManifest *cli.Manifest) error {
+	var errList []error
+	for i := range pluginManifest.Plugins {
+		for _, osArch := range cli.MinOSArch {
+			for _, version := range pluginManifest.Plugins[i].Versions {
+				pluginFilePath := filepath.Join(po.ArtifactDir, osArch.OS(), osArch.Arch(),
+					pluginManifest.Plugins[i].Target, pluginManifest.Plugins[i].Name, version,
+					cli.MakeArtifactName(pluginManifest.Plugins[i].Name, osArch))
 
+				if !utils.PathExists(pluginFilePath) {
+					errList = append(errList, errors.Errorf("unable to verify artifacts for "+
+						"plugin: %q, target: %q, osArch: %q, version: %q. File %q doesn't exist",
+						pluginManifest.Plugins[i].Name, pluginManifest.Plugins[i].Target, osArch.String(), version, pluginFilePath))
+				}
+			}
+		}
+	}
+	return kerrors.NewAggregate(errList)
+}
+
+func (po *PublisherOptions) verifyPluginAndPublisherAssociation(pluginManifest *cli.Manifest) error {
+	f, err := os.CreateTemp("", "*.yaml")
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%s/%s-%s.yaml", PublisherPluginAssociationURL, po.Vendor, po.Publisher)
+	log.Infof("Using url: %s", url)
+	err = utils.DownloadFile(f.Name(), url)
+	if err != nil {
+		return errors.Wrapf(err, "error while downloading plugin publisher association file %q", url)
+	}
+	b, err := os.ReadFile(f.Name())
+	if err != nil {
+		return errors.Wrapf(err, "error while reading downloaded plugin publisher association file %q", f.Name())
+	}
+
+	registeredPluginsForPublisher := &publisher.PublisherPluginAssociation{}
+	err = yaml.Unmarshal(b, registeredPluginsForPublisher)
+	if err != nil {
+		return errors.Wrapf(err, "error while unmarshaling downloaded plugin publisher association file %q", f.Name())
+	}
+
+	var errList []error
+	for i := range pluginManifest.Plugins {
+		found := false
+		for j := range registeredPluginsForPublisher.Plugins {
+			if pluginManifest.Plugins[i].Name == registeredPluginsForPublisher.Plugins[j].Name &&
+				pluginManifest.Plugins[i].Target == registeredPluginsForPublisher.Plugins[j].Target {
+				found = true
+			}
+		}
+		if !found {
+			errList = append(errList, errors.Errorf("plugin: %q with target: %q is not registered for vendor: %q, publisher: %q",
+				pluginManifest.Plugins[i].Name, pluginManifest.Plugins[i].Target, po.Vendor, po.Publisher))
+		}
+	}
+	return kerrors.NewAggregate(errList)
+}
+
+func (po *PublisherOptions) getPluginManifest() (*cli.Manifest, error) {
 	data, err := os.ReadFile(po.PluginManifestFile)
 	if err != nil {
-		return errors.Wrap(err, "fail to read the plugin manifest file")
+		return nil, errors.Wrap(err, "fail to read the plugin manifest file")
 	}
 
-	pluginManifest := &types.PluginManifest{}
+	pluginManifest := &cli.Manifest{}
 	err = yaml.Unmarshal(data, pluginManifest)
 	if err != nil {
-		return errors.Wrap(err, "fail to read the plugin manifest file")
+		return nil, errors.Wrap(err, "fail to read the plugin manifest file")
 	}
-
-	//for i := range pluginManifest.Plugins {
-	//}
-
-	return nil
-}
-
-func (po *PublisherOptions) verifyPluginArtifactLocation(pm types.PluginMetadata) error {
-
-	//// verify that plugin binary exists within provided artifacts directory
-	//for _, os := range types.SupportedOS {
-	//	for _, arch := range types.SupportedArch {
-	//		pluginFilePath := filepath.Join(po.ArtifactDir, os, arch, "cli", pm.Name)
-	//		_, error := os.Stat()
-	//
-	//	}
-	//}
-
-	return nil
+	return pluginManifest, nil
 }

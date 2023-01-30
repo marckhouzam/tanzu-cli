@@ -9,9 +9,12 @@ import (
 	"strings"
 )
 
-const (
-	// DefaultOSArch defines default OS/ARCH
-	DefaultOSArch = "darwin-amd64 linux-amd64 windows-amd64"
+var (
+	// MinOSArch defines minimum OS/ARCH combination for which plugin needs to be built
+	MinOSArch = []Arch{LinuxAMD64, DarwinAMD64, WinAMD64}
+
+	// AllOSArch defines all OS/ARCH combination for which plugin can be built
+	AllOSArch = []Arch{LinuxAMD64, DarwinAMD64, WinAMD64}
 )
 
 // Arch represents a system architecture.

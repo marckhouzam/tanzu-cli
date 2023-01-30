@@ -1,3 +1,3 @@
 name: "builder"
-target: "k8s"
+target: "global"
 description: "Build Tanzu components"

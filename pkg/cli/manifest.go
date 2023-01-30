@@ -10,6 +10,8 @@ import (
 const (
 	// ManifestFileName is the file name for the manifest.
 	ManifestFileName = "manifest.yaml"
+	// PluginManifestFileName is the file name for the plugin manifest.
+	PluginManifestFileName = "plugin_manifest.yaml"
 	// PluginDescriptorFileName is the file name for the plugin descriptor.
 	PluginDescriptorFileName = "plugin.yaml"
 	// AllPlugins is the keyword for all plugins.

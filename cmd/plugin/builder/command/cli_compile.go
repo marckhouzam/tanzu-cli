@@ -206,7 +206,7 @@ func Compile(compileArgs *PluginCompileArgs) error { //nolint:funlen
 		return err
 	}
 
-	manifestPath := filepath.Join(compileArgs.ArtifactsDir, cli.ManifestFileName)
+	manifestPath := filepath.Join(compileArgs.ArtifactsDir, cli.PluginManifestFileName)
 	err = os.WriteFile(manifestPath, b, 0644)
 	if err != nil {
 		return err
