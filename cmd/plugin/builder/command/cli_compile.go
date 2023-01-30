@@ -23,6 +23,7 @@ import (
 
 	rtplugin "github.com/vmware-tanzu/tanzu-plugin-runtime/plugin"
 
+	"github.com/vmware-tanzu/tanzu-cli/cmd/plugin/builder/types"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/cli"
 )
 
@@ -45,6 +46,7 @@ type plugin struct {
 	modPath  string
 	arch     cli.Arch
 	buildID  string
+	target   string
 }
 
 // PluginCompileArgs contains the values to use for compiling plugins.
@@ -150,7 +152,7 @@ func Compile(compileArgs *PluginCompileArgs) error { //nolint:funlen
 	// Set our global values based on the passed args
 	setGlobals(compileArgs)
 
-	log.Infof("building local repository at %s", compileArgs.ArtifactsDir)
+	log.Infof("building local repository at %s, %v, %v", compileArgs.ArtifactsDir, compileArgs.Version, compileArgs.TargetArch)
 
 	manifest := cli.Manifest{
 		CreatedTime: time.Now(),
@@ -298,11 +300,26 @@ func buildPlugin(path string, arch cli.Arch, id string) (plugin, error) {
 		return plugin{}, err
 	}
 
+	metadataFilePath := filepath.Join(path, "metadata.yaml")
+	b, err = os.ReadFile(metadataFilePath)
+	if err != nil {
+		log.Errorf("%s - plugin %q requires a metadata.yaml file", id, desc.Name)
+		return plugin{}, err
+	}
+
+	var metadata types.Metadata
+	err = yaml.Unmarshal(b, &metadata)
+	if err != nil {
+		log.Errorf("%s - error unmarshalling plugin metadata.yaml file: %v", id, err)
+		return plugin{}, err
+	}
+
 	p := plugin{
 		PluginDescriptor: desc,
 		arch:             arch,
 		docPath:          docPath,
 		buildID:          id,
+		target:           metadata.Target,
 	}
 
 	if modPath != "" {
@@ -459,14 +476,14 @@ func (p *plugin) compile() error {
 		return err
 	}
 
-	outPath := filepath.Join(absArtifactsDir, p.Name, p.Version)
+	outPath := filepath.Join(absArtifactsDir, p.target, p.Name, p.Version)
 	err = buildTargets(p.path, outPath, p.Name, p.arch, p.buildID, p.modPath)
 	if err != nil {
 		return err
 	}
 
 	if p.testPath != "" {
-		testOutPath := filepath.Join(absArtifactsDir, p.Name, p.Version, "test")
+		testOutPath := filepath.Join(absArtifactsDir, p.target, p.Name, p.Version, "test")
 		err = buildTargets(p.testPath, testOutPath, fmt.Sprintf("%s-test", p.Name), p.arch, p.buildID, p.modPath)
 		if err != nil {
 			return err
@@ -478,7 +495,7 @@ func (p *plugin) compile() error {
 		return err
 	}
 
-	configPath := filepath.Join(absArtifactsDir, p.Name, cli.PluginDescriptorFileName)
+	configPath := filepath.Join(absArtifactsDir, p.target, p.Name, cli.PluginDescriptorFileName)
 	err = os.WriteFile(configPath, b, 0644)
 	if err != nil {
 		return err

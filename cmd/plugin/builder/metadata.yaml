@@ -1,0 +1,3 @@
+name: "builder"
+target: "global"
+description: "Build Tanzu components"

@@ -6,6 +6,7 @@ package cli
 import (
 	"fmt"
 	"runtime"
+	"strings"
 )
 
 const (
@@ -27,6 +28,29 @@ func (a Arch) IsWindows() bool {
 		return true
 	}
 	return false
+}
+
+// OS returns os-name based on the arch
+func (a Arch) OS() string {
+	ele := strings.Split(a.String(), "_")
+	if len(ele) != 2 {
+		return ""
+	}
+	return ele[0]
+}
+
+// Arch returns arch-name
+func (a Arch) Arch() string {
+	ele := strings.Split(a.String(), "_")
+	if len(ele) != 2 {
+		return ""
+	}
+	return ele[1]
+}
+
+// String converts arch to string
+func (a Arch) String() string {
+	return string(a)
 }
 
 const (
