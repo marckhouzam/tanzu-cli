@@ -27,6 +27,26 @@ type PublisherOptions struct {
 }
 
 type pluginArtifacts struct {
+	// Name is the name of the plugin.
+	Name string
+
+	// Target is the name of the plugin.
+	Target string
+
+	// Description is the plugin's description.
+	Description string
+
+	// Versions available for plugin.
+	VersionArtifactMap map[string][]artifactMetadata
+}
+
+type artifactMetadata struct {
+	// OS is the name of the os.
+	OS string
+	// Arch is the name of the arch.
+	Arch string
+	// Path is plugin binary path from where we need to publish the plugin
+	Path string
 }
 
 type PublisherImpl interface {
@@ -59,6 +79,18 @@ func (po *PublisherOptions) PublishPlugins() error {
 		return errors.Wrap(err, "error while verifying artifacts")
 	}
 	log.Info("Successfully verified plugin and publisher association")
+
+	mapPluginArtifacts, err := po.createTempArtifactsDirForPublishing(pluginManifest)
+	if err != nil {
+		return errors.Wrapf(err, "unable to create temp artifacts directory for publishing")
+	}
+
+	b, err := yaml.Marshal(mapPluginArtifacts)
+	if err != nil {
+		return errors.Wrapf(err, "unable to marshal mapPluginArtifacts")
+	}
+
+	log.Info(string(b))
 
 	return nil
 }
@@ -134,4 +166,44 @@ func (po *PublisherOptions) getPluginManifest() (*cli.Manifest, error) {
 		return nil, errors.Wrap(err, "fail to read the plugin manifest file")
 	}
 	return pluginManifest, nil
+}
+
+func (po *PublisherOptions) createTempArtifactsDirForPublishing(pluginManifest *cli.Manifest) (map[string]pluginArtifacts, error) {
+	mapPluginArtifacts := make(map[string]pluginArtifacts)
+	for i := range pluginManifest.Plugins {
+		for _, osArch := range cli.AllOSArch {
+			for _, version := range pluginManifest.Plugins[i].Versions {
+				pluginFilePath := filepath.Join(po.ArtifactDir, osArch.OS(), osArch.Arch(),
+					pluginManifest.Plugins[i].Target, pluginManifest.Plugins[i].Name, version,
+					cli.MakeArtifactName(pluginManifest.Plugins[i].Name, osArch))
+
+				if !utils.PathExists(pluginFilePath) {
+					continue
+				}
+
+				key := fmt.Sprintf("%s-%s", pluginManifest.Plugins[i].Target, pluginManifest.Plugins[i].Name)
+				pa, exists := mapPluginArtifacts[key]
+				if !exists {
+					pa = pluginArtifacts{
+						Name:               pluginManifest.Plugins[i].Name,
+						Target:             pluginManifest.Plugins[i].Target,
+						Description:        pluginManifest.Plugins[i].Description,
+						VersionArtifactMap: make(map[string][]artifactMetadata),
+					}
+					mapPluginArtifacts[key] = pa
+				}
+				_, exists = pa.VersionArtifactMap[version]
+				if !exists {
+					pa.VersionArtifactMap[version] = make([]artifactMetadata, 0)
+				}
+				am := artifactMetadata{
+					OS:   osArch.OS(),
+					Arch: osArch.Arch(),
+					Path: pluginFilePath,
+				}
+				pa.VersionArtifactMap[version] = append(pa.VersionArtifactMap[version], am)
+			}
+		}
+	}
+	return mapPluginArtifacts, nil
 }

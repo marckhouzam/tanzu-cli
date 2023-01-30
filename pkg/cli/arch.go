@@ -14,7 +14,7 @@ var (
 	MinOSArch = []Arch{LinuxAMD64, DarwinAMD64, WinAMD64}
 
 	// AllOSArch defines all OS/ARCH combination for which plugin can be built
-	AllOSArch = []Arch{LinuxAMD64, DarwinAMD64, WinAMD64}
+	AllOSArch = []Arch{LinuxAMD64, DarwinAMD64, WinAMD64, DarwinARM64, LinuxARM64}
 )
 
 // Arch represents a system architecture.
