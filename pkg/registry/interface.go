@@ -17,4 +17,7 @@ type Registry interface {
 	// DownloadBundle downloads OCI bundle similar to `imgpkg pull -b` command
 	// It is recommended to use this function when downloading imgpkg bundle
 	DownloadBundle(imageName, outputDir string) error
+
+	DownloadImage(imageName, outputDir string) error
+	UploadImage(imageName, inputDir string) error
 }

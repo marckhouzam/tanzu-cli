@@ -182,3 +182,55 @@ func (r *registry) DownloadBundle(imageName, outputDir string) error {
 
 	return pullOptions.Run()
 }
+
+func (r *registry) UploadImage(imageName, inputDir string) error {
+	// Creating a dummy writer to capture the logs
+	// currently logs are not displayed or used directly
+	var outputBuf, errorBuf bytes.Buffer
+	writerUI := ui.NewWriterUI(&outputBuf, &errorBuf, nil)
+
+	pushOptions := cmd.NewPushOptions(writerUI)
+	pushOptions.FileFlags = cmd.FileFlags{Files: []string{inputDir}}
+	pushOptions.ImageFlags = cmd.ImageFlags{Image: imageName}
+
+	if r.opts != nil {
+		pushOptions.RegistryFlags = cmd.RegistryFlags{
+			CACertPaths: r.opts.CACertPaths,
+			VerifyCerts: r.opts.VerifyCerts,
+			Insecure:    r.opts.Insecure,
+			Anon:        r.opts.Anon,
+		}
+	}
+
+	return pushOptions.Run()
+}
+
+// DownloadImage downloads an OCI image similarly to the `imgpkg pull -i` command
+func (r *registry) DownloadImage(imageName, outputDir string) error {
+	return r.downloadBundleOrImage(imageName, outputDir, false)
+}
+
+func (r *registry) downloadBundleOrImage(imageName, outputDir string, isBundle bool) error {
+	// Creating a dummy writer to capture the logs
+	// currently this logs are not displayed or used directly
+	var outputBuf, errorBuf bytes.Buffer
+	writerUI := ui.NewWriterUI(&outputBuf, &errorBuf, nil)
+
+	pullOptions := cmd.NewPullOptions(writerUI)
+	pullOptions.OutputPath = outputDir
+	if isBundle {
+		pullOptions.BundleFlags = cmd.BundleFlags{Bundle: imageName}
+	} else {
+		pullOptions.ImageFlags = cmd.ImageFlags{Image: imageName}
+	}
+	if r.opts != nil {
+		pullOptions.RegistryFlags = cmd.RegistryFlags{
+			CACertPaths: r.opts.CACertPaths,
+			VerifyCerts: r.opts.VerifyCerts,
+			Insecure:    r.opts.Insecure,
+			Anon:        r.opts.Anon,
+		}
+	}
+
+	return pullOptions.Run()
+}

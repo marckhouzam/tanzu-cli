@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"github.com/aunum/log"
 	"github.com/pkg/errors"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/carvelhelpers"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/cli"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/db"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/publisher"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/utils"
 	"gopkg.in/yaml.v3"
@@ -24,6 +26,7 @@ type PublisherOptions struct {
 	Vendor             string
 	Repository         string
 	PluginManifestFile string
+	DryRun             bool
 }
 
 type pluginArtifacts struct {
@@ -62,6 +65,12 @@ func (po *PublisherOptions) PublishPlugins() error {
 		po.PluginManifestFile = filepath.Join(po.ArtifactDir, cli.PluginManifestFileName)
 	}
 
+	centralDBImage := fmt.Sprintf("%s/central:latest", po.Repository)
+	tempCentralDBDir, err := os.MkdirTemp("", "oci_image")
+	if err != nil {
+		return errors.Wrap(err, "error creating temporary directory")
+	}
+
 	pluginManifest, err := po.getPluginManifest()
 	if err != nil {
 		return err
@@ -94,7 +103,22 @@ func (po *PublisherOptions) PublishPlugins() error {
 
 	log.Info(string(b))
 
-	po.publishPluginsFromPluginArtifacts(mapPluginArtifacts)
+	log.Info("Verify plugins on central database index...")
+	err = po.verifyPluginsOnCentralDatabase(centralDBImage, tempCentralDBDir, mapPluginArtifacts)
+	if err != nil {
+		return errors.Wrapf(err, "error while updating central database index")
+	}
+
+	err = po.publishPluginsFromPluginArtifacts(mapPluginArtifacts)
+	if err != nil {
+		return errors.Wrapf(err, "error while publishing plugins to the repository")
+	}
+
+	log.Info("Updating central database index...")
+	err = po.updateCentralDatabase(centralDBImage, tempCentralDBDir)
+	if err != nil {
+		return errors.Wrapf(err, "error while updating central database index")
+	}
 
 	return nil
 }
@@ -228,14 +252,69 @@ func (po *PublisherOptions) createTempArtifactsDirForPublishing(pluginManifest *
 }
 
 func (po *PublisherOptions) publishPluginsFromPluginArtifacts(mapPluginArtifacts map[string]pluginArtifacts) error {
+	var errList []error
 	baseRepository := fmt.Sprintf("%s/%s/%s", po.Repository, po.Vendor, po.Publisher)
 	for _, pa := range mapPluginArtifacts {
 		for _, artifacts := range pa.VersionArtifactMap {
 			for _, a := range artifacts {
 				pluginImage := fmt.Sprintf("%s/%s", baseRepository, a.RelativeURI)
+
 				log.Infof("imgpkg push -i %s -f %s", pluginImage, filepath.Dir(a.Path))
+
+				if !po.DryRun {
+					err := carvelhelpers.UploadImage(pluginImage, filepath.Dir(a.Path))
+					if err != nil {
+						errList = append(errList, err)
+					}
+				}
 			}
 		}
+	}
+	return kerrors.NewAggregate(errList)
+}
+
+func (po *PublisherOptions) verifyPluginsOnCentralDatabase(centralDBImage, tempDir string, mapPluginArtifacts map[string]pluginArtifacts) error {
+	err := carvelhelpers.DownloadImage(centralDBImage, tempDir)
+	if err != nil {
+		return errors.Wrapf(err, "failed to download image '%s'", centralDBImage)
+	}
+
+	sqliteDBFileName := filepath.Join(tempDir, "plugin_inventory.db")
+	sqliteDB := db.NewSQLiteDB(sqliteDBFileName)
+
+	for _, pa := range mapPluginArtifacts {
+		for version, artifacts := range pa.VersionArtifactMap {
+			for _, a := range artifacts {
+				row := db.PluginInventoryRow{
+					Name:               pa.Name,
+					Target:             pa.Target,
+					RecommendedVersion: "",
+					Version:            version,
+					Hidden:             "",
+					Description:        pa.Description,
+					Publisher:          po.Publisher,
+					Vendor:             po.Vendor,
+					OS:                 a.OS,
+					Arch:               a.Arch,
+					Digest:             "",
+					URI:                a.RelativeURI,
+				}
+
+				err = sqliteDB.InsertPluginRow(row)
+				if err != nil {
+					return errors.Wrapf(err, "row: %v", row)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (po *PublisherOptions) updateCentralDatabase(centralDBImage, tempDir string) error {
+	err := carvelhelpers.UploadImage(centralDBImage, tempDir)
+	if err != nil {
+		return errors.Wrapf(err, "failed to upload image '%s' to update central database image", centralDBImage)
 	}
 	return nil
 }
