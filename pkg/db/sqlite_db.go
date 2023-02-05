@@ -5,6 +5,7 @@ package db
 
 import (
 	"database/sql"
+
 	"github.com/pkg/errors"
 
 	// Import the sqlite3 driver

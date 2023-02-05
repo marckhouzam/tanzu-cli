@@ -5,20 +5,24 @@ package plugin
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/aunum/log"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
+	kerrors "k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/vmware-tanzu/tanzu-cli/pkg/carvelhelpers"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/cli"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/db"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/publisher"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/utils"
-	"gopkg.in/yaml.v3"
-	kerrors "k8s.io/apimachinery/pkg/util/errors"
-	"os"
-	"path/filepath"
+	configtypes "github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
 )
 
-const PublisherPluginAssociationURL = "https://gist.githubusercontent.com/anujc25/894c5187b7d1da25490139fe54c1e73f/raw/b0b8f15e70110b857b3b75d0ce4f7ab04b5782c3"
+const PublisherPluginAssociationURL = "https://gist.githubusercontent.com/marckhouzam/5b653daf0afb815152f45aade5bc5d08/raw/3c45eb74cdcbb438e10708eacbc5329967cc2e36"
 
 type PublisherOptions struct {
 	ArtifactDir        string
@@ -170,7 +174,8 @@ func (po *PublisherOptions) verifyPluginAndPublisherAssociation(pluginManifest *
 		found := false
 		for j := range registeredPluginsForPublisher.Plugins {
 			if pluginManifest.Plugins[i].Name == registeredPluginsForPublisher.Plugins[j].Name &&
-				pluginManifest.Plugins[i].Target == registeredPluginsForPublisher.Plugins[j].Target {
+				configtypes.StringToTarget(strings.ToLower(pluginManifest.Plugins[i].Target)) ==
+					configtypes.StringToTarget(strings.ToLower(registeredPluginsForPublisher.Plugins[j].Target)) {
 				found = true
 			}
 		}
