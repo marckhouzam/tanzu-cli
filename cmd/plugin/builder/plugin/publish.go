@@ -4,7 +4,9 @@
 package plugin
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -292,6 +294,10 @@ func (po *PublisherOptions) verifyPluginsOnCentralDatabase(centralDBImage, tempD
 	for _, pa := range mapPluginArtifacts {
 		for version, artifacts := range pa.VersionArtifactMap {
 			for _, a := range artifacts {
+				digest, err := getDigest(a.Path)
+				if err != nil {
+					return errors.Wrapf(err, "unable to compute digest of '%s' for target '%s'", pa.Name, pa.Target)
+				}
 				row := db.PluginInventoryRow{
 					Name:               pa.Name,
 					Target:             pa.Target,
@@ -303,7 +309,7 @@ func (po *PublisherOptions) verifyPluginsOnCentralDatabase(centralDBImage, tempD
 					Vendor:             po.Vendor,
 					OS:                 a.OS,
 					Arch:               a.Arch,
-					Digest:             "",
+					Digest:             digest,
 					URI:                a.RelativeURI,
 				}
 
@@ -328,4 +334,19 @@ func (po *PublisherOptions) updateCentralDatabase(centralDBImage, tempDir string
 		}
 	}
 	return nil
+}
+
+// getDigest computes the sha256 digest of the specified file
+func getDigest(filePath string) (string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, f); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
