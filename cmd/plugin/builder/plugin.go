@@ -56,6 +56,7 @@ func newPluginPublishCmd() *cobra.Command {
 				Vendor:             ppFlags.Vendor,
 				Repository:         ppFlags.Repository,
 				PluginManifestFile: ppFlags.PluginManifestFile,
+				DryRun:             false,
 			}
 			return pluginPublisher.PublishPlugins()
 		},

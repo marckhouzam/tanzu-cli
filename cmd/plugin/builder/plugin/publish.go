@@ -22,7 +22,7 @@ import (
 	configtypes "github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
 )
 
-const PublisherPluginAssociationURL = "https://gist.githubusercontent.com/marckhouzam/5b653daf0afb815152f45aade5bc5d08/raw/3c45eb74cdcbb438e10708eacbc5329967cc2e36"
+const PublisherPluginAssociationURL = "https://gist.githubusercontent.com/marckhouzam/5b653daf0afb815152f45aade5bc5d08/raw/7cd7e79c55361b492f611c8c090640daa5be1d9d"
 
 type PublisherOptions struct {
 	ArtifactDir        string
@@ -137,9 +137,12 @@ func (po *PublisherOptions) verifyPluginArtifacts(pluginManifest *cli.Manifest) 
 					cli.MakeArtifactName(pluginManifest.Plugins[i].Name, osArch))
 
 				if !utils.PathExists(pluginFilePath) {
-					errList = append(errList, errors.Errorf("unable to verify artifacts for "+
+					// 	errList = append(errList, errors.Errorf("unable to verify artifacts for "+
+					// 		"plugin: %q, target: %q, osArch: %q, version: %q. File %q doesn't exist",
+					// pluginManifest.Plugins[i].Name, pluginManifest.Plugins[i].Target, osArch.String(), version, pluginFilePath))
+					log.Warningf("skipping missing artifact for "+
 						"plugin: %q, target: %q, osArch: %q, version: %q. File %q doesn't exist",
-						pluginManifest.Plugins[i].Name, pluginManifest.Plugins[i].Target, osArch.String(), version, pluginFilePath))
+						pluginManifest.Plugins[i].Name, pluginManifest.Plugins[i].Target, osArch.String(), version, pluginFilePath)
 				}
 			}
 		}
@@ -246,7 +249,7 @@ func (po *PublisherOptions) createTempArtifactsDirForPublishing(pluginManifest *
 					OS:   osArch.OS(),
 					Arch: osArch.Arch(),
 					Path: tmpPluginFilePath,
-					RelativeURI: fmt.Sprintf("%s/%s/%s/%s:%s", osArch.OS(), osArch.Arch(),
+					RelativeURI: fmt.Sprintf("%s/%s/%s/%s/%s/%s:%s", po.Vendor, po.Publisher, osArch.OS(), osArch.Arch(),
 						pluginManifest.Plugins[i].Target, pluginManifest.Plugins[i].Name, version),
 				}
 				pa.VersionArtifactMap[version] = append(pa.VersionArtifactMap[version], am)
@@ -258,11 +261,10 @@ func (po *PublisherOptions) createTempArtifactsDirForPublishing(pluginManifest *
 
 func (po *PublisherOptions) publishPluginsFromPluginArtifacts(mapPluginArtifacts map[string]pluginArtifacts) error {
 	var errList []error
-	baseRepository := fmt.Sprintf("%s/%s/%s", po.Repository, po.Vendor, po.Publisher)
 	for _, pa := range mapPluginArtifacts {
 		for _, artifacts := range pa.VersionArtifactMap {
 			for _, a := range artifacts {
-				pluginImage := fmt.Sprintf("%s/%s", baseRepository, a.RelativeURI)
+				pluginImage := fmt.Sprintf("%s/%s", po.Repository, a.RelativeURI)
 
 				log.Infof("imgpkg push -i %s -f %s", pluginImage, filepath.Dir(a.Path))
 
@@ -317,9 +319,13 @@ func (po *PublisherOptions) verifyPluginsOnCentralDatabase(centralDBImage, tempD
 }
 
 func (po *PublisherOptions) updateCentralDatabase(centralDBImage, tempDir string) error {
-	err := carvelhelpers.UploadImage(centralDBImage, tempDir)
-	if err != nil {
-		return errors.Wrapf(err, "failed to upload image '%s' to update central database image", centralDBImage)
+	log.Infof("imgpkg push -i %s -f %s", centralDBImage, tempDir)
+
+	if !po.DryRun {
+		err := carvelhelpers.UploadImage(centralDBImage, tempDir)
+		if err != nil {
+			return errors.Wrapf(err, "failed to upload image '%s' to update central database image", centralDBImage)
+		}
 	}
 	return nil
 }
