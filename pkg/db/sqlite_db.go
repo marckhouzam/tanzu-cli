@@ -34,7 +34,7 @@ func (db *sqliteDB) InsertPluginRow(row PluginInventoryRow) error {
 	}
 	defer sdb.Close()
 
-	_, err = sdb.Exec("INSERT INTO PluginBinaries VALUES(?,?,?,?,?,?,?,?,?,?,?,?);", row.Name, row.Target, row.Version, row.RecommendedVersion, row.Hidden, row.Description, row.Publisher, row.Vendor, row.OS, row.Arch, row.Digest, row.URI)
+	_, err = sdb.Exec("INSERT INTO PluginBinaries VALUES(?,?,?,?,?,?,?,?,?,?,?,?);", row.Name, row.Target, row.RecommendedVersion, row.Version, row.Hidden, row.Description, row.Publisher, row.Vendor, row.OS, row.Arch, row.Digest, row.URI)
 	if err != nil {
 		return errors.Wrap(err, "unable to insert plugin row to the DB")
 	}
