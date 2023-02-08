@@ -32,6 +32,7 @@ type pluginPublishFlags struct {
 	Vendor             string
 	Repository         string
 	PluginManifestFile string
+	DryRun             bool
 }
 
 type pluginBuildFlags struct {
@@ -56,7 +57,7 @@ func newPluginPublishCmd() *cobra.Command {
 				Vendor:             ppFlags.Vendor,
 				Repository:         ppFlags.Repository,
 				PluginManifestFile: ppFlags.PluginManifestFile,
-				DryRun:             false,
+				DryRun:             ppFlags.DryRun,
 			}
 			return pluginPublisher.PublishPlugins()
 		},
@@ -66,6 +67,7 @@ func newPluginPublishCmd() *cobra.Command {
 	pluginPublishCmd.Flags().StringVarP(&ppFlags.Vendor, "vendor", "v", "", "Name of the vendor")
 	pluginPublishCmd.Flags().StringVarP(&ppFlags.Repository, "repository", "r", "", "Repository to which plugin needs to be published")
 	pluginPublishCmd.Flags().StringVarP(&ppFlags.PluginManifestFile, "manifest", "m", "", "Plugin manifest file [required with legacy artifacts directory]")
+	pluginPublishCmd.Flags().BoolVarP(&ppFlags.DryRun, "dry-run", "d", false, "Printout commands without executing them.")
 
 	return pluginPublishCmd
 }
