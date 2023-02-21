@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -37,9 +39,7 @@ func newSearchPluginCmd() *cobra.Command {
 		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// TODO(khouzam): Implement the below flags
-			if len(args) == 1 {
-				return fmt.Errorf("the filter argument is not yet implemented")
-			}
+
 			if len(targetStr) > 0 {
 				return fmt.Errorf("filtering by target is not yet implemented")
 			}
@@ -47,6 +47,10 @@ func newSearchPluginCmd() *cobra.Command {
 				return fmt.Errorf("listing versions is not yet implemented")
 			}
 
+			filter := ""
+			if len(args) == 1 {
+				filter = args[0]
+			}
 			var err error
 			var allPlugins []discovery.Discovered
 			if local != "" {
@@ -66,9 +70,7 @@ func newSearchPluginCmd() *cobra.Command {
 				}
 			}
 			sort.Sort(discovery.DiscoveredSorter(allPlugins))
-			displayPluginsFound(allPlugins, cmd.OutOrStdout())
-
-			return nil
+			return displayPluginsFound(allPlugins, filter, cmd.OutOrStdout())
 		},
 	}
 
@@ -81,8 +83,22 @@ func newSearchPluginCmd() *cobra.Command {
 	return searchCmd
 }
 
-func displayPluginsFound(plugins []discovery.Discovered, writer io.Writer) {
+func displayPluginsFound(plugins []discovery.Discovered, filter string, writer io.Writer) error {
 	outputWriter := component.NewOutputWriter(writer, outputFormat, "Name", "Description", "Target", "Version", "Status", "Context")
+
+	var matcher *regexp.Regexp
+	useRegex := false
+	var err error
+	// Check if the filter is flanked with slashes which implies a regex
+	lenFilter := len(filter)
+	if lenFilter >= 2 && filter[0] == '/' && filter[lenFilter-1] == '/' {
+		useRegex = true
+		regex := filter[1 : lenFilter-1]
+		matcher, err = regexp.Compile(regex)
+		if err != nil {
+			return err
+		}
+	}
 
 	for i := range plugins {
 		context := ""
@@ -101,14 +117,37 @@ func displayPluginsFound(plugins []discovery.Discovered, writer io.Writer) {
 			status = common.PluginStatusInstalled
 		}
 
-		outputWriter.AddRow(
+		values := []string{
 			plugins[i].Name,
 			plugins[i].Description,
 			string(plugins[i].Target),
 			version,
 			status,
-			context)
+			context,
+		}
+		fullRowStr := strings.Join(values, " ")
+
+		addRow := func(elements []string) {
+			newRow := make([]interface{}, len(elements))
+			for i, val := range elements {
+				newRow[i] = val
+			}
+			outputWriter.AddRow(newRow...)
+		}
+
+		if useRegex {
+			if matcher.Match([]byte(fullRowStr)) {
+				// Only add rows that match the regex filter
+				addRow(values)
+			}
+		} else {
+			if strings.Contains(fullRowStr, filter) {
+				// Only add rows that match the keyword filter
+				addRow(values)
+			}
+		}
 	}
 
 	outputWriter.Render()
+	return nil
 }
