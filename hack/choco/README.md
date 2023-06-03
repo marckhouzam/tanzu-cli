@@ -15,11 +15,18 @@ architecture. To facilitate building the package, the new `choco-package`
 Makefile target has been added; this Makefile target will first start a docker
 container and then run the `hack/choco/build_package.sh` script.
 
-The `VERSION` environment variable must be set when running the make target.
+```bash
+cd tanzu-cli
+make choco-package
+```
+Note that the `hack/choco/build_package.sh` script automatically fetches the
+required SHA for the CLI binary from the appropriate Github release.  If the
+Github release is not public yet, it is possible to provide the SHA manually
+through the environment variable `SHA_FOR_CHOCO` as shown below:
 
 ```bash
 cd tanzu-cli
-VERSION=v0.26.0 make choco-package
+SHA_FOR_CHOCO=12345678901234567 make choco-package
 ```
 
 ### Content of Chocolatey package
@@ -31,15 +38,15 @@ probably publish the Chocolatey package in the community package repository.
 
 ## Installing the Tanzu CLI using the built Chocolatey package
 
-Installing the Tanzu CLI using the newly build Chocolatey package can be done
-on a Windows machine with `choco` installed. First, the Chocolatey package must
+Installing the Tanzu CLI using the newly built Chocolatey package can be done
+on a Windows machine having `choco` installed. First, the Chocolatey package must
 be uploaded to the Windows machine.
 
 For example, if we upload the package to the Windows machine under
-`$HOME\tanzu-cli.0.26.0.nupkg`, we can then simply do:
+`$HOME\tanzu-cli.0.90.0-beta0.nupkg`, we can then simply do:
 
 ```bash
-choco install -f "$HOME\tanzu-cli.0.26.0.nupkg"
+choco install -f "$HOME\tanzu-cli.0.90.0-beta0.nupkg"
 ```
 
 It is also possible to configure a local repository containing the local package:
@@ -51,7 +58,7 @@ choco install tanzu-cli
 
 ## Uninstalling the Tanzu CLI
 
-To uninstall the Tanzu CLI after it has been install with Chocolatey:
+To uninstall the Tanzu CLI after it has been installed with Chocolatey:
 
 ```bash
 choco uninstall tanzu-cli
