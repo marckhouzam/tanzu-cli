@@ -57,6 +57,7 @@ else
    finalVersion=$VERSION
 fi
 choco pack ${BASE_DIR}/tanzu-cli-release.nuspec --out ${OUTPUT_DIR} "cliVersion=${finalVersion}"
+choco pack ${BASE_DIR}/tanzu-cli-release-unofficial.nuspec --out ${OUTPUT_DIR} "cliVersion=${finalVersion}"
 
 # Upload the nupkg file to the registry
 # DON'T DO THIS YET
