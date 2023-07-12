@@ -24,6 +24,7 @@ import (
 	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/discovery"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/plugininventory"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/pluginmanager"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/pluginsupplier"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/log"
@@ -134,9 +135,10 @@ func newPluginCmd() *cobra.Command {
 
 func newListPluginCmd() *cobra.Command {
 	var listCmd = &cobra.Command{
-		Use:   "list",
-		Short: "List installed plugins",
-		Long:  "List installed standalone plugins or plugins recommended by the contexts being used",
+		Use:               "list",
+		Short:             "List installed plugins",
+		Long:              "List installed standalone plugins or plugins recommended by the contexts being used",
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			errorList := make([]error, 0)
 			if !config.IsFeatureActivated(constants.FeatureDisableCentralRepositoryForTesting) {
@@ -202,13 +204,14 @@ func newListPluginCmd() *cobra.Command {
 
 func newDescribePluginCmd() *cobra.Command {
 	var describeCmd = &cobra.Command{
-		Use:   "describe " + pluginNameCaps,
-		Short: "Describe a plugin",
-		Long:  "Displays detailed information for a plugin",
+		Use:               "describe " + pluginNameCaps,
+		Short:             "Describe a plugin",
+		Long:              "Displays detailed information for a plugin",
+		ValidArgsFunction: completeInstalledPlugins,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			output := component.NewOutputWriter(cmd.OutOrStdout(), outputFormat, "name", "version", "status", "target", "description", "installationPath")
 			if len(args) != 1 {
-				return fmt.Errorf("must provide plugin name as positional argument")
+				return fmt.Errorf("must provide one plugin name as a positional argument")
 			}
 			pluginName := args[0]
 
@@ -231,9 +234,10 @@ func newDescribePluginCmd() *cobra.Command {
 
 func newInstallPluginCmd() *cobra.Command {
 	var installCmd = &cobra.Command{
-		Use:   "install [" + pluginNameCaps + "]",
-		Short: "Install a plugin",
-		Args:  cobra.MaximumNArgs(1),
+		Use:               "install [" + pluginNameCaps + "]",
+		Short:             "Install a plugin",
+		Args:              cobra.MaximumNArgs(1),
+		ValidArgsFunction: completeAllPlugins,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			var pluginName string
@@ -383,9 +387,10 @@ func legacyPluginInstall(cmd *cobra.Command, args []string) error {
 
 func newUpgradePluginCmd() *cobra.Command {
 	var upgradeCmd = &cobra.Command{
-		Use:   "upgrade " + pluginNameCaps,
-		Short: "Upgrade a plugin",
-		Long:  "Installs the latest version available for the specified plugin",
+		Use:               "upgrade " + pluginNameCaps,
+		Short:             "Upgrade a plugin",
+		Long:              "Installs the latest version available for the specified plugin",
+		ValidArgsFunction: completeAllPlugins,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			if len(args) != 1 {
 				return fmt.Errorf("must provide plugin name as positional argument")
@@ -422,12 +427,13 @@ func newUpgradePluginCmd() *cobra.Command {
 
 func newDeletePluginCmd() *cobra.Command {
 	var deleteCmd = &cobra.Command{
-		Use:   "delete " + pluginNameCaps,
-		Short: "Delete a plugin",
-		Long:  "Uninstalls the specified plugin",
+		Use:               "delete " + pluginNameCaps,
+		Short:             "Delete a plugin",
+		Long:              "Uninstalls the specified plugin",
+		ValidArgsFunction: completeInstalledPlugins,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			if len(args) != 1 {
-				return fmt.Errorf("must provide plugin name as positional argument")
+				return fmt.Errorf("must provide one plugin name as a positional argument")
 			}
 			pluginName := args[0]
 
@@ -455,9 +461,10 @@ func newDeletePluginCmd() *cobra.Command {
 
 func newCleanPluginCmd() *cobra.Command {
 	var cleanCmd = &cobra.Command{
-		Use:   "clean",
-		Short: "Clean the plugins",
-		Long:  "Remove all installed plugins from the system",
+		Use:               "clean",
+		Short:             "Clean the plugins",
+		Long:              "Remove all installed plugins from the system",
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			err = pluginmanager.Clean()
 			if err != nil {
@@ -476,6 +483,7 @@ func newSyncPluginCmd() *cobra.Command {
 		Short: "Installs all plugins recommended by the active contexts",
 		Long: `Installs all plugins recommended by the active contexts.
 Plugins installed with this command will only be available while the context remains active.`,
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			err = pluginmanager.SyncPlugins()
 			if err != nil {
@@ -719,4 +727,97 @@ func displayInstalledAndMissingListView(installedStandalonePlugins []cli.PluginI
 
 func getTarget() configtypes.Target {
 	return configtypes.StringToTarget(strings.ToLower(targetStr))
+}
+
+func completeInstalledPlugins(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	installedPlugins, err := pluginsupplier.GetInstalledPlugins()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var comps []string
+	for i := range installedPlugins {
+		comps = append(comps, fmt.Sprintf("%s\t%s", installedPlugins[i].Name, installedPlugins[i].Description))
+	}
+	return comps, cobra.ShellCompDirectiveNoFileComp
+}
+
+func completeAllPlugins(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	var err error
+	var allPlugins []discovery.Discovered
+	var comps []string
+	if local != "" {
+		// The user requested the list of plugins from a local path
+		local, err = filepath.Abs(local)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		allPlugins, err = pluginmanager.DiscoverPluginsFromLocalSource(local)
+
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		for i := range allPlugins {
+			comps = append(comps, fmt.Sprintf("%s\t%s", allPlugins[i].Name, allPlugins[i].Description))
+		}
+
+		// When using the --local flag, the "all" keyword can be used
+		comps = append(comps, fmt.Sprintf("%s\t%s", cli.AllPlugins, "All plugins of the local source"))
+		return comps, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	if group != "" {
+		groupIdentifier := plugininventory.PluginGroupIdentifierFromID(group)
+		if groupIdentifier == nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		if groupIdentifier.Version == "" {
+			groupIdentifier.Version = cli.VersionLatest
+		}
+
+		groups, err := pluginmanager.DiscoverPluginGroups(discovery.WithGroupDiscoveryCriteria(&discovery.GroupDiscoveryCriteria{
+			Vendor:    groupIdentifier.Vendor,
+			Publisher: groupIdentifier.Publisher,
+			Name:      groupIdentifier.Name,
+			Version:   groupIdentifier.Version,
+		}))
+		if err != nil || len(groups) == 0 {
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		for _, plugin := range groups[0].Versions[groups[0].RecommendedVersion] {
+			if showNonMandatory || plugin.Mandatory {
+				// To get the description we would need to query the central repo again.
+				// Let's avoid that extra delay and simply not provide a description.
+				comps = append(comps, plugin.Name)
+			}
+		}
+
+		// When using the --group flag, the "all" keyword can be used
+		comps = append(comps, cli.AllPlugins)
+		return comps, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	// Show plugins found in the central repos
+	allPlugins, err = pluginmanager.DiscoverStandalonePlugins(discovery.WithPluginDiscoveryCriteria(&discovery.PluginDiscoveryCriteria{
+		Name:   pluginName,
+		Target: configtypes.StringToTarget(targetStr)}))
+
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	for i := range allPlugins {
+		comps = append(comps, fmt.Sprintf("%s\t%s", allPlugins[i].Name, allPlugins[i].Description))
+	}
+	return comps, cobra.ShellCompDirectiveNoFileComp
 }
