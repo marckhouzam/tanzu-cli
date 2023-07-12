@@ -6,6 +6,7 @@ package command
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
@@ -44,9 +45,10 @@ func newPluginGroupCmd() *cobra.Command {
 
 func newSearchCmd() *cobra.Command {
 	var searchCmd = &cobra.Command{
-		Use:   "search",
-		Short: "Search for available plugin-groups",
-		Long:  "Search from the list of available plugin-groups.  A plugin-group provides a list of plugin name/version combinations which can be installed in one step.",
+		Use:               "search",
+		Short:             "Search for available plugin-groups",
+		Long:              "Search from the list of available plugin-groups.  A plugin-group provides a list of plugin name/version combinations which can be installed in one step.",
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var criteria *discovery.GroupDiscoveryCriteria
 			if groupID != "" {
@@ -85,10 +87,11 @@ func newSearchCmd() *cobra.Command {
 
 func newGetCmd() *cobra.Command {
 	var getCmd = &cobra.Command{
-		Use:   "get GROUP_NAME",
-		Short: "Get the content of the specified plugin-group",
-		Long:  "Get the content of the specified plugin-group.  A plugin-group provides a list of plugin name/version combinations which can be installed in one step.  This command allows to see the list of plugins included in the specified group.",
-		Args:  cobra.ExactArgs(1),
+		Use:               "get GROUP_NAME",
+		Short:             "Get the content of the specified plugin-group",
+		Long:              "Get the content of the specified plugin-group.  A plugin-group provides a list of plugin name/version combinations which can be installed in one step.  This command allows to see the list of plugins included in the specified group.",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeAllGroupsAndVersion,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			groupID := args[0]
 
@@ -226,4 +229,65 @@ func displayGroupContentAsList(group *plugininventory.PluginGroup, writer io.Wri
 		}
 	}
 	output.Render()
+}
+
+func completeAllGroupsAndVersion(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	var comps []string
+	if idx := strings.Index(toComplete, ":"); idx != -1 {
+		// The group is already specified before the :
+		// so now we should complete the group version
+		group := toComplete[:idx]
+		versionToComplete := toComplete[idx+1:]
+		versions, _ := completeGroupVersions(nil, []string{group}, versionToComplete)
+		for _, v := range versions {
+			comps = append(comps, fmt.Sprintf("%s:%s", group, v))
+		}
+		return comps, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	// We need to complete a group name
+	groups, err := pluginmanager.DiscoverPluginGroups(nil)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	for _, g := range groups {
+		comps = append(comps, fmt.Sprintf("%s\t%s", plugininventory.PluginGroupToID(g), g.Description))
+	}
+	// Don't add a space after the group name so the uer can add a : if
+	// they want to specify a version.
+	return comps, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
+}
+
+func completeGroupVersions(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 1 {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	groupID := args[0]
+	groupIdentifier := plugininventory.PluginGroupIdentifierFromID(groupID)
+	if groupIdentifier == nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	criteria := &discovery.GroupDiscoveryCriteria{
+		Vendor:    groupIdentifier.Vendor,
+		Publisher: groupIdentifier.Publisher,
+		Name:      groupIdentifier.Name,
+	}
+
+	groups, err := pluginmanager.DiscoverPluginGroups(discovery.WithGroupDiscoveryCriteria(criteria))
+	if err != nil || len(groups) == 0 {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	var comps []string
+	for v := range groups[0].Versions {
+		comps = append(comps, v)
+	}
+
+	return comps, cobra.ShellCompDirectiveNoFileComp
 }
