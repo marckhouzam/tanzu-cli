@@ -63,8 +63,9 @@ func newCertCmd() *cobra.Command {
 
 func newListCertCmd() *cobra.Command {
 	var listCertsCmd = &cobra.Command{
-		Use:   "list",
-		Short: "List available certificate configurations",
+		Use:               "list",
+		Short:             "List available certificate configurations",
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output := component.NewOutputWriter(cmd.OutOrStdout(), outputFormat, "host", "ca-certificate", "skip-cert-verification", "insecure")
 			certs, _ := configlib.GetCerts()
@@ -107,6 +108,7 @@ func newAddCertCmd() *cobra.Command {
 
     # Set to allow insecure (http) connection while interacting with host
     tanzu config cert add --host test.vmware.com  --insecure true`,
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if skipCertVerifyForAdd != "" {
 				if !strings.EqualFold(skipCertVerifyForAdd, "true") && !strings.EqualFold(skipCertVerifyForAdd, "false") {
@@ -161,6 +163,7 @@ func newUpdateCertCmd() *cobra.Command {
 
     # Update whether to allow insecure (http) connection while interacting with host
     tanzu config cert update test.vmware.com  --insecure true`,
+		ValidArgsFunction: completeCertHosts,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if skipCertVerifyForUpdate != "" {
 				if !strings.EqualFold(skipCertVerifyForUpdate, "true") && !strings.EqualFold(skipCertVerifyForUpdate, "false") {
@@ -208,6 +211,7 @@ func newDeleteCertCmd() *cobra.Command {
 
     # Delete a certificate for host:port
     tanzu config cert delete test.vmware.com:5443`,
+		ValidArgsFunction: completeCertHosts,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			aHost := args[0]
 
@@ -243,4 +247,17 @@ func createCert(host, caCertPath, skipCertVerify, insecure string) (*configtypes
 	}
 
 	return cert, nil
+}
+
+func completeCertHosts(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	var comps []string
+	certs, _ := configlib.GetCerts()
+	for _, cert := range certs {
+		comps = append(comps, cert.Host)
+	}
+	return comps, cobra.ShellCompDirectiveNoFileComp
 }
