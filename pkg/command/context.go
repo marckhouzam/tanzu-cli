@@ -89,10 +89,11 @@ func init() {
 }
 
 var createCtxCmd = &cobra.Command{
-	Use:   "create CONTEXT_NAME",
-	Short: "Create a Tanzu CLI context",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  createCtx,
+	Use:               "create CONTEXT_NAME",
+	Short:             "Create a Tanzu CLI context",
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              createCtx,
 	Example: `
     # Create a TKG management cluster context using endpoint
     tanzu context create mgmt-cluster --endpoint "https://k8s.example.com[:port]"
@@ -576,9 +577,10 @@ func vSphereSupervisorLogin(endpoint string) (mergeFilePath, currentContext stri
 }
 
 var listCtxCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List contexts",
-	RunE:  listCtx,
+	Use:               "list",
+	Short:             "List contexts",
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              listCtx,
 }
 
 func listCtx(cmd *cobra.Command, _ []string) error {
@@ -601,9 +603,10 @@ func listCtx(cmd *cobra.Command, _ []string) error {
 }
 
 var getCtxCmd = &cobra.Command{
-	Use:   "get CONTEXT_NAME",
-	Short: "Display a context from the config",
-	RunE:  getCtx,
+	Use:               "get CONTEXT_NAME",
+	Short:             "Display a context from the config",
+	ValidArgsFunction: completeContexts,
+	RunE:              getCtx,
 }
 
 func getCtx(cmd *cobra.Command, args []string) error {
@@ -707,9 +710,10 @@ func getValues(m map[configtypes.Target]*configtypes.Context) []*configtypes.Con
 }
 
 var deleteCtxCmd = &cobra.Command{
-	Use:   "delete CONTEXT_NAME",
-	Short: "Delete a context from the config",
-	RunE:  deleteCtx,
+	Use:               "delete CONTEXT_NAME",
+	Short:             "Delete a context from the config",
+	ValidArgsFunction: completeContexts,
+	RunE:              deleteCtx,
 }
 
 func deleteCtx(_ *cobra.Command, args []string) error {
@@ -742,9 +746,10 @@ func deleteCtx(_ *cobra.Command, args []string) error {
 }
 
 var useCtxCmd = &cobra.Command{
-	Use:   "use CONTEXT_NAME",
-	Short: "Set the context to be used by default",
-	RunE:  useCtx,
+	Use:               "use CONTEXT_NAME",
+	Short:             "Set the context to be used by default",
+	ValidArgsFunction: completeContexts,
+	RunE:              useCtx,
 }
 
 func useCtx(_ *cobra.Command, args []string) error {
@@ -771,10 +776,11 @@ func useCtx(_ *cobra.Command, args []string) error {
 }
 
 var unsetCtxCmd = &cobra.Command{
-	Use:   "unset CONTEXT_NAME",
-	Short: "Unset the active context so that it is not used by default.",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  unsetCtx,
+	Use:               "unset CONTEXT_NAME",
+	Short:             "Unset the active context so that it is not used by default.",
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: completeContexts,
+	RunE:              unsetCtx,
 }
 
 func unsetCtx(_ *cobra.Command, args []string) error {
@@ -911,4 +917,21 @@ func displayContextListOutputSplitViewTarget(cfg *configtypes.ClientConfig, writ
 		_, _ = cyanBold.Println("Target: ", cyanBoldItalic.Sprintf("%s", configtypes.TargetTMC))
 		outputWriterTMCTarget.Render()
 	}
+}
+
+func completeContexts(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	cfg, err := config.GetClientConfig()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+
+	var comps []string
+	for _, ctx := range cfg.KnownContexts {
+		comps = append(comps, fmt.Sprintf("%s\tTarget: %s", ctx.Name, string(ctx.Target)))
+	}
+	return comps, cobra.ShellCompDirectiveNoFileComp
 }
