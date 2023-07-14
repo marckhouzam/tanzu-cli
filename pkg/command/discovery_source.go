@@ -78,8 +78,9 @@ func newDiscoverySourceCmd() *cobra.Command {
 
 func newListDiscoverySourceCmd() *cobra.Command {
 	var listDiscoverySourceCmd = &cobra.Command{
-		Use:   "list",
-		Short: "List available discovery sources",
+		Use:               "list",
+		Short:             "List available discovery sources",
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if !configlib.IsFeatureActivated(constants.FeatureDisableCentralRepositoryForTesting) {
@@ -168,9 +169,10 @@ func newAddDiscoverySourceCmd() *cobra.Command {
 
 func newUpdateDiscoverySourceCmd() *cobra.Command {
 	var updateDiscoverySourceCmd = &cobra.Command{
-		Use:   "update SOURCE_NAME",
-		Short: "Update a discovery source configuration",
-		Args:  cobra.ExactArgs(1),
+		Use:               "update SOURCE_NAME",
+		Short:             "Update a discovery source configuration",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeDiscoverySources,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			discoveryName := args[0]
 
@@ -224,6 +226,7 @@ func newDeleteDiscoverySourceCmd() *cobra.Command {
 		Example: `
     # Delete a discovery source
     tanzu plugin discovery delete default`,
+		ValidArgsFunction: completeDiscoverySources,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			discoveryName := args[0]
 
@@ -245,9 +248,10 @@ func newDeleteDiscoverySourceCmd() *cobra.Command {
 
 func newInitDiscoverySourceCmd() *cobra.Command {
 	var initDiscoverySourceCmd = &cobra.Command{
-		Use:   "init",
-		Short: "Initialize the discovery source to its default value",
-		Args:  cobra.MaximumNArgs(0),
+		Use:               "init",
+		Short:             "Initialize the discovery source to its default value",
+		Args:              cobra.MaximumNArgs(0),
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := config.PopulateDefaultCentralDiscovery(true)
 			if err != nil {
@@ -334,4 +338,19 @@ func discoverySourceNameAndType(ds configtypes.PluginDiscovery) (string, string)
 	default:
 		return "-", "Unknown" // Unknown discovery source found
 	}
+}
+
+func completeDiscoverySources(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	var comps []string
+	discoverySources, _ := configlib.GetCLIDiscoverySources()
+	for _, ds := range discoverySources {
+		if ds.OCI != nil {
+			comps = append(comps, fmt.Sprintf("%s\t%s", ds.OCI.Name, ds.OCI.Image))
+		}
+	}
+	return comps, cobra.ShellCompDirectiveNoFileComp
 }
