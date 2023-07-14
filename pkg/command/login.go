@@ -36,7 +36,8 @@ var loginCmd = &cobra.Command{
 	Annotations: map[string]string{
 		"group": string(plugin.SystemCmdGroup),
 	},
-	RunE: login,
+	ValidArgsFunction: cobra.NoFileCompletions,
+	RunE:              login,
 }
 
 func init() {

@@ -53,6 +53,17 @@ func newCEIPParticipationSetCmd() *cobra.Command {
 		Short: "Set the opt-in preference for CEIP (subject to change)",
 		Long:  "Set the opt-in preference for CEIP (subject to change)",
 		Args:  cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) > 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			// Keep the "true" choice first by using ShellCompDirectiveKeepOrder (may not work for all shells)
+			return []string{
+					"true\tAccept to participate",
+					"false\tRefuse to participate"},
+				cobra.ShellCompDirectiveKeepOrder | cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !strings.EqualFold(args[0], "true") && !strings.EqualFold(args[0], "false") {
 				return errors.Errorf("incorrect boolean argument: %q", args[0])
@@ -70,9 +81,10 @@ func newCEIPParticipationSetCmd() *cobra.Command {
 
 func newCEIPParticipationGetCmd() *cobra.Command {
 	var getCmd = &cobra.Command{
-		Use:   "get",
-		Short: "Get the current CEIP opt-in status (subject to change)",
-		Long:  "Get the current CEIP opt-in status (subject to change)",
+		Use:               "get",
+		Short:             "Get the current CEIP opt-in status (subject to change)",
+		Long:              "Get the current CEIP opt-in status (subject to change)",
+		ValidArgsFunction: cobra.NoFileCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			optInVal, err := configlib.GetCEIPOptIn()
 			if err != nil {
