@@ -166,6 +166,35 @@ func newRootCmd() *cobra.Command {
 					return err
 				}
 			}
+
+			if activeHelpLevel := cobra.GetActiveHelpConfig(cmd); activeHelpLevel == "intro" {
+				finalCmd, _, err := cmd.Root().Find(args)
+				if err == nil && finalCmd != nil {
+					originalValidArgsFunc := finalCmd.ValidArgsFunction
+					finalCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+						var comps []string
+						if cmd.Short != "" {
+							comps = cobra.AppendActiveHelp(comps, cmd.Short)
+						}
+
+						// By default don't provide file completion.
+						// This is important when we are doing sub-command
+						// completion such as "tanzu context <TAB>"; normally
+						// cobra would turn off file completion in this case,
+						// but the below will be overriding cobra's directive.
+						// For the cases that need file completion, we'll have
+						// to add a ValidArgsFunction.  Such cases are much more
+						// rare than needing to disable file completion.
+						directive := cobra.ShellCompDirectiveNoFileComp
+						if originalValidArgsFunc != nil {
+							var oriComps []string
+							oriComps, directive = originalValidArgsFunc(cmd, args, toComplete)
+							comps = append(comps, oriComps...)
+						}
+						return comps, directive
+					}
+				}
+			}
 			return nil
 		},
 	}
