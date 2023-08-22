@@ -48,7 +48,7 @@ func newSearchCmd() *cobra.Command {
 		Use:               "search",
 		Short:             "Search for available plugin-groups",
 		Long:              "Search from the list of available plugin-groups.  A plugin-group provides a list of plugin name/version combinations which can be installed in one step.",
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var criteria *discovery.GroupDiscoveryCriteria
 			if groupID != "" {
@@ -233,7 +233,7 @@ func displayGroupContentAsList(group *plugininventory.PluginGroup, writer io.Wri
 
 func completeAllGroupsAndVersion(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
-		return nil, cobra.ShellCompDirectiveNoFileComp
+		return activeHelpNoMoreArgs(nil), cobra.ShellCompDirectiveNoFileComp
 	}
 
 	var comps []string

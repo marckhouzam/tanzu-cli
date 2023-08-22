@@ -579,7 +579,7 @@ func vSphereSupervisorLogin(endpoint string) (mergeFilePath, currentContext stri
 var listCtxCmd = &cobra.Command{
 	Use:               "list",
 	Short:             "List contexts",
-	ValidArgsFunction: cobra.NoFileCompletions,
+	ValidArgsFunction: noMoreCompletions,
 	RunE:              listCtx,
 }
 
@@ -921,7 +921,7 @@ func displayContextListOutputSplitViewTarget(cfg *configtypes.ClientConfig, writ
 
 func completeContexts(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
-		return nil, cobra.ShellCompDirectiveNoFileComp
+		return activeHelpNoMoreArgs(nil), cobra.ShellCompDirectiveNoFileComp
 	}
 
 	cfg, err := config.GetClientConfig()

@@ -33,7 +33,7 @@ to an internet-restricted environment. Please also see the "upload-bundle" comma
 
     # Download a plugin bundle with the entire plugin repository from a custom discovery source
     tanzu plugin download-bundle --image custom.registry.vmware.com/tkg/tanzu-plugins/plugin-inventory:latest --to-tar /tmp/plugin_bundle_complete.tar.gz`,
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !dpbo.dryRun && dpbo.tarFile == "" {
 				return errors.New("flag '--to-tar' is required")
@@ -79,7 +79,7 @@ environment. The plugin bundle is obtained using the "download-bundle" command.`
     # Upload the plugin bundle to the remote repository
     tanzu plugin upload-bundle --tar /tmp/plugin_bundle_vmware_tkg_default_v1.0.0.tar.gz --to-repo custom.registry.company.com/tanzu-plugins/
     tanzu plugin upload-bundle --tar /tmp/plugin_bundle_complete.tar.gz --to-repo custom.registry.company.com/tanzu-plugins/`,
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options := airgapped.UploadPluginBundleOptions{
 				Tar:             upbo.sourceTar,

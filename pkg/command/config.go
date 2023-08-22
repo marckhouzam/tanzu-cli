@@ -65,7 +65,7 @@ var configCmd = &cobra.Command{
 var getConfigCmd = &cobra.Command{
 	Use:               "get",
 	Short:             "Get the current configuration",
-	ValidArgsFunction: cobra.NoFileCompletions,
+	ValidArgsFunction: noMoreCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := configlib.GetClientConfig()
 		if err != nil {
@@ -211,7 +211,7 @@ var initConfigCmd = &cobra.Command{
 	Use:               "init",
 	Short:             "Initialize config with defaults",
 	Long:              "Initialize config with defaults including plugin specific defaults such as default feature flags for all active and installed plugins",
-	ValidArgsFunction: cobra.NoFileCompletions,
+	ValidArgsFunction: noMoreCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Acquire tanzu config lock
 		configlib.AcquireTanzuConfigLock()
@@ -260,7 +260,7 @@ var serversCmd = &cobra.Command{
 var listServersCmd = &cobra.Command{
 	Use:               "list",
 	Short:             "List servers",
-	ValidArgsFunction: cobra.NoFileCompletions,
+	ValidArgsFunction: noMoreCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := configlib.GetClientConfig()
 		if err != nil {
@@ -380,7 +380,7 @@ func unsetEnvs(paramArray []string) error {
 
 func completeUnsetConfig(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
-		return nil, cobra.ShellCompDirectiveNoFileComp
+		return activeHelpNoMoreArgs(nil), cobra.ShellCompDirectiveNoFileComp
 	}
 
 	// Complete all available env.<var> and features.<...> immediately

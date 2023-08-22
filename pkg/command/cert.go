@@ -65,7 +65,7 @@ func newListCertCmd() *cobra.Command {
 	var listCertsCmd = &cobra.Command{
 		Use:               "list",
 		Short:             "List available certificate configurations",
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			output := component.NewOutputWriter(cmd.OutOrStdout(), outputFormat, "host", "ca-certificate", "skip-cert-verification", "insecure")
 			certs, _ := configlib.GetCerts()
@@ -108,7 +108,7 @@ func newAddCertCmd() *cobra.Command {
 
     # Set to allow insecure (http) connection while interacting with host
     tanzu config cert add --host test.vmware.com  --insecure true`,
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if skipCertVerifyForAdd != "" {
 				if !strings.EqualFold(skipCertVerifyForAdd, "true") && !strings.EqualFold(skipCertVerifyForAdd, "false") {
@@ -251,7 +251,7 @@ func createCert(host, caCertPath, skipCertVerify, insecure string) (*configtypes
 
 func completeCertHosts(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
-		return nil, cobra.ShellCompDirectiveNoFileComp
+		return activeHelpNoMoreArgs(nil), cobra.ShellCompDirectiveNoFileComp
 	}
 
 	var comps []string

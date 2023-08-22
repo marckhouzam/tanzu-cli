@@ -139,7 +139,7 @@ func newListPluginCmd() *cobra.Command {
 		Use:               "list",
 		Short:             "List installed plugins",
 		Long:              "List installed standalone plugins or plugins recommended by the contexts being used",
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			errorList := make([]error, 0)
 			if !config.IsFeatureActivated(constants.FeatureDisableCentralRepositoryForTesting) {
@@ -469,7 +469,7 @@ func newCleanPluginCmd() *cobra.Command {
 		Use:               "clean",
 		Short:             "Clean the plugins",
 		Long:              "Remove all installed plugins from the system",
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			err = pluginmanager.Clean()
 			if err != nil {
@@ -488,7 +488,7 @@ func newSyncPluginCmd() *cobra.Command {
 		Short: "Installs all plugins recommended by the active contexts",
 		Long: `Installs all plugins recommended by the active contexts.
 Plugins installed with this command will only be available while the context remains active.`,
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			err = pluginmanager.SyncPlugins()
 			if err != nil {
@@ -749,13 +749,15 @@ func completeInstalledPlugins(_ *cobra.Command, args []string, _ string) ([]stri
 				comps = append(comps, fmt.Sprintf("%s\t%s", installedPlugins[i].Name, installedPlugins[i].Description))
 			}
 		}
+	} else {
+		comps = activeHelpNoMoreArgs(comps)
 	}
 	return comps, cobra.ShellCompDirectiveNoFileComp
 }
 
 func completeAllPlugins(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
-		return nil, cobra.ShellCompDirectiveNoFileComp
+		return activeHelpNoMoreArgs(nil), cobra.ShellCompDirectiveNoFileComp
 	}
 
 	var err error

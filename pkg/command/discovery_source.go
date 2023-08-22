@@ -80,7 +80,7 @@ func newListDiscoverySourceCmd() *cobra.Command {
 	var listDiscoverySourceCmd = &cobra.Command{
 		Use:               "list",
 		Short:             "List available discovery sources",
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if !configlib.IsFeatureActivated(constants.FeatureDisableCentralRepositoryForTesting) {
@@ -251,7 +251,7 @@ func newInitDiscoverySourceCmd() *cobra.Command {
 		Use:               "init",
 		Short:             "Initialize the discovery source to its default value",
 		Args:              cobra.MaximumNArgs(0),
-		ValidArgsFunction: cobra.NoFileCompletions,
+		ValidArgsFunction: noMoreCompletions,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := config.PopulateDefaultCentralDiscovery(true)
 			if err != nil {
@@ -342,7 +342,7 @@ func discoverySourceNameAndType(ds configtypes.PluginDiscovery) (string, string)
 
 func completeDiscoverySources(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
-		return nil, cobra.ShellCompDirectiveNoFileComp
+		return activeHelpNoMoreArgs(nil), cobra.ShellCompDirectiveNoFileComp
 	}
 
 	var comps []string

@@ -35,7 +35,7 @@ var genAllDocsCmd = &cobra.Command{
 	Use:               "generate-all-docs",
 	Short:             "Generate Cobra CLI docs for all plugins installed",
 	Hidden:            true,
-	ValidArgsFunction: cobra.NoFileCompletions,
+	ValidArgsFunction: noMoreCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		if docsDir == "" {
