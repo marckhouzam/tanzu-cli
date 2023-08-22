@@ -52,7 +52,7 @@ const (
 	// PluginFileName is the file name for the plugin info.
 	PluginFileName = "plugin.yaml"
 	// String used to request the user to use the --target flag
-	missingTargetStr             = "unable to uniquely identify plugin '%v'. Please specify the target (" + common.TargetList + ") of the plugin using the `--target` flag"
+	MissingTargetStr             = "unable to uniquely identify plugin '%v'. Please specify the target (" + common.TargetList + ") of the plugin using the `--target` flag"
 	errorWhileDiscoveringPlugins = "there was an error while discovering plugins, error information: '%v'"
 	errorNoDiscoverySourcesFound = "there are no plugin discovery sources available. Please run 'tanzu plugin source init'"
 )
@@ -662,7 +662,7 @@ func DescribePlugin(pluginName string, target configtypes.Target) (info *cli.Plu
 		}
 	}
 
-	return nil, errors.Errorf(missingTargetStr, pluginName)
+	return nil, errors.Errorf(MissingTargetStr, pluginName)
 }
 
 // InitializePlugin initializes the plugin configuration
@@ -777,7 +777,7 @@ func installPlugin(pluginName, version string, target configtypes.Target, contex
 			return installOrUpgradePlugin(&matchedPlugins[i], version, false)
 		}
 	}
-	errorList = append(errorList, errors.Errorf(missingTargetStr, pluginName))
+	errorList = append(errorList, errors.Errorf(MissingTargetStr, pluginName))
 	return kerrors.NewAggregate(errorList)
 }
 
@@ -813,7 +813,7 @@ func legacyPluginInstall(pluginName, version string, target configtypes.Target) 
 		}
 	}
 
-	return errors.Errorf(missingTargetStr, pluginName)
+	return errors.Errorf(MissingTargetStr, pluginName)
 }
 
 // UpgradePlugin upgrades a plugin from the given repository.
@@ -952,7 +952,7 @@ func GetRecommendedVersionOfPlugin(pluginName string, target configtypes.Target)
 			return matchedPlugins[i].RecommendedVersion, nil
 		}
 	}
-	return "", errors.Errorf(missingTargetStr, pluginName)
+	return "", errors.Errorf(MissingTargetStr, pluginName)
 }
 
 func installOrUpgradePlugin(p *discovery.Discovered, version string, installTestPlugin bool) error {
@@ -1194,7 +1194,7 @@ func DeletePlugin(options DeletePluginOptions) error {
 	uniqueTarget := matchedPlugins[0].Target
 	for i := range matchedPlugins {
 		if matchedPlugins[i].Target != uniqueTarget {
-			return errors.Errorf(missingTargetStr, options.PluginName)
+			return errors.Errorf(MissingTargetStr, options.PluginName)
 		}
 	}
 

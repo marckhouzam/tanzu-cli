@@ -146,7 +146,7 @@ func Test_InstallPlugin_InstalledPlugins_No_Central_Repo(t *testing.T) {
 	// Try installing cluster plugin with no context-type
 	err = InstallStandalonePlugin("cluster", "v0.2.0", configtypes.TargetUnknown)
 	assertions.NotNil(err)
-	assertions.Contains(err.Error(), fmt.Sprintf(missingTargetStr, "cluster"))
+	assertions.Contains(err.Error(), fmt.Sprintf(MissingTargetStr, "cluster"))
 
 	// Try installing cluster plugin with context-type=tmc
 	err = InstallStandalonePlugin("cluster", "v0.2.0", configtypes.TargetTMC)
@@ -164,7 +164,7 @@ func Test_InstallPlugin_InstalledPlugins_No_Central_Repo(t *testing.T) {
 	// Try installing management-cluster plugin from standalone discovery without context-type
 	err = InstallStandalonePlugin("management-cluster", "v1.6.0", configtypes.TargetUnknown)
 	assertions.NotNil(err)
-	assertions.Contains(err.Error(), fmt.Sprintf(missingTargetStr, "management-cluster"))
+	assertions.Contains(err.Error(), fmt.Sprintf(MissingTargetStr, "management-cluster"))
 
 	// Try installing management-cluster plugin from standalone discovery
 	err = InstallStandalonePlugin("management-cluster", "v1.6.0", configtypes.TargetK8s)
@@ -248,7 +248,7 @@ func Test_InstallPlugin_InstalledPlugins_Central_Repo(t *testing.T) {
 	// Try installing myplugin plugin with no context-type
 	err = InstallStandalonePlugin("myplugin", "v0.2.0", configtypes.TargetUnknown)
 	assertions.NotNil(err)
-	assertions.Contains(err.Error(), fmt.Sprintf(missingTargetStr, "myplugin"))
+	assertions.Contains(err.Error(), fmt.Sprintf(MissingTargetStr, "myplugin"))
 
 	// Try installing myplugin plugin with context-type=tmc
 	err = InstallStandalonePlugin("myplugin", "v0.2.0", configtypes.TargetTMC)
@@ -768,7 +768,7 @@ func Test_DeletePlugin(t *testing.T) {
 	mockInstallPlugin(assertions, "myplugin", "v1.6.0", configtypes.TargetK8s)
 	// Try to Delete plugin without passing target after installing plugin with different targets
 	err = DeletePlugin(DeletePluginOptions{PluginName: "myplugin", Target: "", ForceDelete: true})
-	assertions.Contains(err.Error(), fmt.Sprintf(missingTargetStr, "myplugin"))
+	assertions.Contains(err.Error(), fmt.Sprintf(MissingTargetStr, "myplugin"))
 }
 
 func Test_ValidatePlugin(t *testing.T) {

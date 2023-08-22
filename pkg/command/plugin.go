@@ -735,28 +735,56 @@ func getTarget() configtypes.Target {
 }
 
 func completeInstalledPlugins(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	if !configtypes.IsValidTarget(targetStr, true, true) {
+		return cobra.AppendActiveHelp(nil, invalidTargetMsg), cobra.ShellCompDirectiveNoFileComp
+	}
+
 	installedPlugins, err := pluginsupplier.GetInstalledPlugins()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	var comps []string
 	target := getTarget()
 	if len(args) == 0 {
 		// Complete all plugin names as long as the target matches and let the shell filter
+		var comps []string
 		for i := range installedPlugins {
 			if target == configtypes.TargetUnknown || target == installedPlugins[i].Target {
 				comps = append(comps, fmt.Sprintf("%s\t%s", installedPlugins[i].Name, installedPlugins[i].Description))
 			}
 		}
-	} else {
-		comps = activeHelpNoMoreArgs(comps)
+		return comps, cobra.ShellCompDirectiveNoFileComp
 	}
-	return comps, cobra.ShellCompDirectiveNoFileComp
+
+	// Check if the specified plugin name is unique or if the --target must be specified
+	if target == configtypes.TargetUnknown {
+		matchingCount := 0
+		pluginName := args[0]
+		for i := range installedPlugins {
+			if installedPlugins[i].Name == pluginName {
+				matchingCount++
+			}
+		}
+
+		var comps []string
+		if matchingCount > 1 {
+			comps = cobra.AppendActiveHelp(
+				comps,
+				fmt.Sprintf(pluginmanager.MissingTargetStr, pluginName))
+			// TODO(khouzam): should we instead actually completion the --target flag directly?
+			//comps = append(comps, "--target")
+		} else {
+			comps = activeHelpNoMoreArgs(comps)
+		}
+		return comps, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	return activeHelpNoMoreArgs(nil), cobra.ShellCompDirectiveNoFileComp
 }
 
 func completeAllPlugins(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
+		// Check if plugin name is unique, or if a target will be required
 		return activeHelpNoMoreArgs(nil), cobra.ShellCompDirectiveNoFileComp
 	}
 
