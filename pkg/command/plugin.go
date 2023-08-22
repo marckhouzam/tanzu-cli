@@ -825,6 +825,14 @@ func completeAllPlugins(_ *cobra.Command, args []string, _ string) ([]string, co
 	}
 
 	for i := range allPlugins {
+		// TODO(khouzam): zsh and fish when receiving two identical completions even with different
+		// descriptions, will only show the first one. E.g.,
+		// $ tanzu plugin install cluster<TAB>
+		// cluster       -- A TMC managed Kubernetes cluster
+		// clustergroup  -- A group of Kubernetes clusters
+		//
+		// The missing description for TKG can be confusing, as if there is no cluster plugin for tkg
+		// maybe we should remove the description, or add both to the same completion?
 		comps = append(comps, fmt.Sprintf("%s\t%s", allPlugins[i].Name, allPlugins[i].Description))
 	}
 	return comps, cobra.ShellCompDirectiveNoFileComp
