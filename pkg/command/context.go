@@ -92,7 +92,7 @@ var createCtxCmd = &cobra.Command{
 	Use:               "create CONTEXT_NAME",
 	Short:             "Create a Tanzu CLI context",
 	Args:              cobra.MaximumNArgs(1),
-	ValidArgsFunction: cobra.NoFileCompletions,
+	ValidArgsFunction: compCreateCtx,
 	RunE:              createCtx,
 	Example: `
     # Create a TKG management cluster context using endpoint
@@ -933,5 +933,17 @@ func completeContexts(_ *cobra.Command, args []string, _ string) ([]string, cobr
 	for _, ctx := range cfg.KnownContexts {
 		comps = append(comps, fmt.Sprintf("%s\tTarget: %s", ctx.Name, string(ctx.Target)))
 	}
+	return comps, cobra.ShellCompDirectiveNoFileComp
+}
+
+func compCreateCtx(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) > 0 {
+		var comps []string
+		comps = cobra.AppendActiveHelp(comps, "Please use the relevant flags to provide the required information.")
+		comps = cobra.AppendActiveHelp(comps, "Alternatively you can execute the command as is and let the prompt guide you.")
+		return comps, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	comps := cobra.AppendActiveHelp(nil, "Please specify a name for the context.")
 	return comps, cobra.ShellCompDirectiveNoFileComp
 }
