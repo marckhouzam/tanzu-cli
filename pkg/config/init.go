@@ -5,12 +5,19 @@
 package config
 
 import (
+	"fmt"
+
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/config"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/log"
 )
 
 func init() {
+	InitConfigFiles()
+}
+
+func InitConfigFiles() {
+	fmt.Println("Called INIT")
 	// Acquire tanzu config lock
 	config.AcquireTanzuConfigLock()
 
@@ -39,4 +46,5 @@ func init() {
 	if !config.IsFeatureActivated(constants.FeatureDisableCentralRepositoryForTesting) {
 		_ = PopulateDefaultCentralDiscovery(false)
 	}
+	// panic("test")
 }

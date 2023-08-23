@@ -1289,6 +1289,7 @@ func Test_removeDuplicates(t *testing.T) {
 }
 
 func TestHelperProcess(t *testing.T) {
+	fmt.Println("running test")
 	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
 		return
 	}
