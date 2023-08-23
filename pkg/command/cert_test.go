@@ -13,6 +13,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	configlib "github.com/vmware-tanzu/tanzu-plugin-runtime/config"
 )
 
@@ -44,6 +45,8 @@ var _ = Describe("config cert command tests", func() {
 			caCertFile, err = os.CreateTemp("", "cert")
 			err = os.WriteFile(caCertFile.Name(), []byte(fakeCACertData), 0600)
 			Expect(err).To(BeNil())
+
+			config.InitConfigFiles()
 		})
 		AfterEach(func() {
 			os.Unsetenv("TANZU_CONFIG")

@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	configlib "github.com/vmware-tanzu/tanzu-plugin-runtime/config"
 )
 
@@ -49,6 +50,8 @@ servers:
 	}(f2.Name())
 	err = os.Setenv("TANZU_CONFIG_NEXT_GEN", f2.Name())
 	assert.NoError(t, err)
+
+	config.InitConfigFiles()
 
 	server, err := configlib.GetServer("mgmt")
 	assert.Nil(t, err)

@@ -11,8 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
-	"github.com/vmware-tanzu/tanzu-plugin-runtime/config"
+	configlib "github.com/vmware-tanzu/tanzu-plugin-runtime/config"
 )
 
 var testData1 = `---
@@ -146,9 +147,7 @@ func Test_NewOCIDiscovery(t *testing.T) {
 	assert.Nil(err)
 	os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
 
-	featureArray := strings.Split(constants.FeatureContextCommand, ".")
-	err = config.SetFeature(featureArray[1], featureArray[2], "true")
-	assert.Nil(err)
+	config.InitConfigFiles()
 
 	defer func() {
 		os.Unsetenv("TANZU_CONFIG")
@@ -176,8 +175,8 @@ func Test_NewOCIDiscovery(t *testing.T) {
 	assert.Nil(dbDiscovery.groupCriteria)
 
 	// Turn off central repo feature
-	featureArray = strings.Split(constants.FeatureDisableCentralRepositoryForTesting, ".")
-	err = config.SetFeature(featureArray[1], featureArray[2], "true")
+	featureArray := strings.Split(constants.FeatureDisableCentralRepositoryForTesting, ".")
+	err = configlib.SetFeature(featureArray[1], featureArray[2], "true")
 	assert.Nil(err)
 
 	// Check that the correct discovery type is returned

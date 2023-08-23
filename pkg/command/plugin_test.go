@@ -17,8 +17,9 @@ import (
 	"github.com/vmware-tanzu/tanzu-cli/pkg/catalog"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/cli"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
-	"github.com/vmware-tanzu/tanzu-plugin-runtime/config"
+	configlib "github.com/vmware-tanzu/tanzu-plugin-runtime/config"
 	configtypes "github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/plugin"
 )
@@ -153,6 +154,8 @@ func TestPluginList(t *testing.T) {
 		os.Setenv("TANZU_CONFIG_NEXT_GEN", tkgConfigFileNG.Name())
 		defer os.RemoveAll(tkgConfigFileNG.Name())
 
+		config.InitConfigFiles()
+
 		dir, err := os.MkdirTemp("", "tanzu-cli-root-cmd")
 		assert.Nil(t, err)
 		defer os.RemoveAll(dir)
@@ -160,15 +163,10 @@ func TestPluginList(t *testing.T) {
 		os.Setenv("TANZU_CLI_CEIP_OPT_IN_PROMPT_ANSWER", "No")
 		os.Setenv("TANZU_CLI_EULA_PROMPT_ANSWER", "Yes")
 
-		// Always turn on the context feature
-		featureArray := strings.Split(constants.FeatureContextCommand, ".")
-		err = config.SetFeature(featureArray[1], featureArray[2], "true")
-		assert.Nil(t, err)
-
 		// Disable the Central Repository feature if needed
 		if !spec.centralRepoFeature {
 			featureArray := strings.Split(constants.FeatureDisableCentralRepositoryForTesting, ".")
-			err := config.SetFeature(featureArray[1], featureArray[2], "true")
+			err := configlib.SetFeature(featureArray[1], featureArray[2], "true")
 			assert.Nil(t, err)
 		}
 
@@ -379,9 +377,7 @@ func TestInstallPlugin(t *testing.T) {
 	os.Setenv("TANZU_CLI_CEIP_OPT_IN_PROMPT_ANSWER", "No")
 	os.Setenv("TANZU_CLI_EULA_PROMPT_ANSWER", "Yes")
 
-	featureArray := strings.Split(constants.FeatureContextCommand, ".")
-	err = config.SetFeature(featureArray[1], featureArray[2], "true")
-	assert.Nil(err)
+	config.InitConfigFiles()
 
 	defer func() {
 		os.Unsetenv("TANZU_CONFIG")
@@ -396,7 +392,7 @@ func TestInstallPlugin(t *testing.T) {
 		t.Run(spec.test, func(t *testing.T) {
 			// Disable the Central Repository feature if needed
 			featureArray := strings.Split(constants.FeatureDisableCentralRepositoryForTesting, ".")
-			err := config.SetFeature(featureArray[1], featureArray[2], spec.centralRepoDisabled)
+			err := configlib.SetFeature(featureArray[1], featureArray[2], spec.centralRepoDisabled)
 			assert.Nil(err)
 
 			rootCmd, err := NewRootCmd()
@@ -439,9 +435,7 @@ func TestUpgradePlugin(t *testing.T) {
 	os.Setenv("TANZU_CLI_CEIP_OPT_IN_PROMPT_ANSWER", "No")
 	os.Setenv("TANZU_CLI_EULA_PROMPT_ANSWER", "Yes")
 
-	featureArray := strings.Split(constants.FeatureContextCommand, ".")
-	err = config.SetFeature(featureArray[1], featureArray[2], "true")
-	assert.Nil(err)
+	config.InitConfigFiles()
 
 	defer func() {
 		os.Unsetenv("TANZU_CONFIG")

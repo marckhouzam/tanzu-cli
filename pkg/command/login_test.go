@@ -11,6 +11,7 @@ import (
 	"github.com/otiai10/copy"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	configtypes "github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
 )
@@ -43,6 +44,8 @@ var _ = Describe("create new server", func() {
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", tkgConfigFileNG.Name())
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 			Expect(err).To(BeNil(), "Error while coping tanzu config file for testing")
+
+			config.InitConfigFiles()
 
 			err = os.Setenv(constants.EULAPromptAnswer, "yes")
 			Expect(err).To(BeNil())
@@ -110,6 +113,8 @@ var _ = Describe("create new server", func() {
 				os.Setenv("TANZU_CONFIG_NEXT_GEN", tkgConfigFileNG.Name())
 				err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 				Expect(err).To(BeNil(), "Error while coping tanzu config file for testing")
+
+				config.InitConfigFiles()
 			})
 			AfterEach(func() {
 				os.Unsetenv("TANZU_CONFIG")

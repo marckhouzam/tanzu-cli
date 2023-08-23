@@ -19,6 +19,7 @@ import (
 
 	"github.com/vmware-tanzu/tanzu-cli/pkg/cli"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/fakes"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/plugincmdtree"
 	configlib "github.com/vmware-tanzu/tanzu-plugin-runtime/config"
@@ -95,9 +96,10 @@ var _ = Describe("Unit tests for UpdateCmdPreRunMetrics()", func() {
 		Expect(err).To(BeNil())
 		os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
 
+		config.InitConfigFiles()
+
 		err = configlib.SetCLIId("fake-cli-id")
 		Expect(err).ToNot(HaveOccurred(), "failed to set the CLI ID")
-
 	})
 	AfterEach(func() {
 		os.Unsetenv("TANZU_CONFIG")
@@ -560,9 +562,10 @@ var _ = Describe("Unit tests for SendMetrics()", func() {
 		Expect(err).To(BeNil())
 		os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
 
+		config.InitConfigFiles()
+
 		err = configlib.SetCEIPOptIn("true")
 		Expect(err).ToNot(HaveOccurred(), "failed to set the CEIP OptIn")
-
 	})
 	AfterEach(func() {
 		os.Unsetenv("TANZU_CONFIG")

@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/configpaths"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	configlib "github.com/vmware-tanzu/tanzu-plugin-runtime/config"
@@ -47,6 +48,7 @@ var _ = Describe("GetRegistryCertOptions", func() {
 			Expect(err).To(BeNil())
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", tanzuConfigFileNG.Name())
 
+			config.InitConfigFiles()
 		})
 		AfterEach(func() {
 			os.Unsetenv("TANZU_CONFIG")
@@ -144,6 +146,8 @@ var _ = Describe("GetRegistryCertOptions", func() {
 			tanzuConfigFileNG, err = os.CreateTemp("", "config_ng")
 			Expect(err).To(BeNil())
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", tanzuConfigFileNG.Name())
+
+			config.InitConfigFiles()
 
 			os.Setenv("http_proxy", "http://"+testHTTPProxyHost)
 			os.Setenv("https_proxy", "http://"+testHTTPSProxyHost)

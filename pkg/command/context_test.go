@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -20,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/vmware-tanzu/tanzu-plugin-runtime/config"
+	configlib "github.com/vmware-tanzu/tanzu-plugin-runtime/config"
 	configtypes "github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
 )
 
@@ -60,6 +61,8 @@ var _ = Describe("Test tanzu context command", func() {
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", tkgConfigFileNG.Name())
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 			Expect(err).To(BeNil(), "Error while copying tanzu config_ng file for testing")
+
+			config.InitConfigFiles()
 
 			cmd.SetOut(&buf)
 		})
@@ -127,6 +130,8 @@ var _ = Describe("Test tanzu context command", func() {
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 			Expect(err).To(BeNil(), "Error while copying tanzu config_ng file for testing")
 
+			config.InitConfigFiles()
+
 			cmd.SetOut(&buf)
 		})
 		AfterEach(func() {
@@ -174,6 +179,8 @@ clusterOpts:
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 			Expect(err).To(BeNil(), "Error while copying tanzu-ng config file for testing")
 
+			config.InitConfigFiles()
+
 			cmd.SetOut(&buf)
 		})
 		AfterEach(func() {
@@ -217,6 +224,8 @@ clusterOpts:
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 			Expect(err).To(BeNil(), "Error while copying tanzu config_ng file for testing")
 
+			config.InitConfigFiles()
+
 			cmd.SetOut(&buf)
 		})
 		AfterEach(func() {
@@ -239,7 +248,7 @@ clusterOpts:
 			err = useCtx(cmd, []string{testUseContext})
 			Expect(err).To(BeNil())
 
-			cctx, err := config.GetCurrentContext(configtypes.Target(targetStr))
+			cctx, err := configlib.GetCurrentContext(configtypes.Target(targetStr))
 			Expect(err).To(BeNil())
 			Expect(cctx.Name).To(ContainSubstring(testUseContext))
 		})
@@ -259,6 +268,9 @@ clusterOpts:
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", tkgConfigFileNG.Name())
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 			Expect(err).To(BeNil(), "Error while copying tanzu config_ng file for testing")
+
+			config.InitConfigFiles()
+
 			targetStr = ""
 			cmd.SetOut(&buf)
 		})
@@ -397,6 +409,8 @@ var _ = Describe("create new context", func() {
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", tkgConfigFileNG.Name())
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 			Expect(err).To(BeNil(), "Error while copying tanzu config_ng file for testing")
+
+			config.InitConfigFiles()
 		})
 		AfterEach(func() {
 			os.Unsetenv("TANZU_CONFIG")
@@ -461,6 +475,8 @@ var _ = Describe("create new context", func() {
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", tkgConfigFileNG.Name())
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 			Expect(err).To(BeNil(), "Error while copying tanzu config_ng file for testing")
+
+			config.InitConfigFiles()
 		})
 		AfterEach(func() {
 			os.Unsetenv("TANZU_CONFIG")
@@ -527,6 +543,8 @@ var _ = Describe("create new context", func() {
 				os.Setenv("TANZU_CONFIG_NEXT_GEN", tkgConfigFileNG.Name())
 				err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 				Expect(err).To(BeNil(), "Error while copying tanzu config_ng file for testing")
+
+				config.InitConfigFiles()
 			})
 			AfterEach(func() {
 				os.Unsetenv("TANZU_CONFIG")

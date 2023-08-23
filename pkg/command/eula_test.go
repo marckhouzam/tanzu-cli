@@ -4,14 +4,13 @@ package command
 
 import (
 	"os"
-	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 
-	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
-	"github.com/vmware-tanzu/tanzu-plugin-runtime/config"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
+	configlib "github.com/vmware-tanzu/tanzu-plugin-runtime/config"
 )
 
 // Executes the command and verify if prompt is expected to be shown or not
@@ -43,9 +42,7 @@ var _ = Describe("EULA command tests", func() {
 			Expect(err).To(BeNil())
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", tanzuConfigFileNG.Name())
 
-			featureArray := strings.Split(constants.FeatureContextCommand, ".")
-			err = config.SetFeature(featureArray[1], featureArray[2], "true")
-			Expect(err).To(BeNil())
+			config.InitConfigFiles()
 
 			os.Setenv("TANZU_CLI_CEIP_OPT_IN_PROMPT_ANSWER", "No")
 		})
@@ -64,9 +61,9 @@ var _ = Describe("EULA command tests", func() {
 				err = eulaCmd.Execute()
 				Expect(err).To(BeNil())
 
-				eulaStatus, err := config.GetEULAStatus()
+				eulaStatus, err := configlib.GetEULAStatus()
 				Expect(err).To(BeNil())
-				Expect(eulaStatus).To(Equal(config.EULAStatusAccepted))
+				Expect(eulaStatus).To(Equal(configlib.EULAStatusAccepted))
 			})
 		})
 		Context("When invoking the show command", func() {

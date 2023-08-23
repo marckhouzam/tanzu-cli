@@ -322,6 +322,8 @@ func TestEnvVarsSet(t *testing.T) {
 	os.Setenv("TANZU_CLI_EULA_PROMPT_ANSWER", "Yes")
 	defer os.RemoveAll(configFileNG.Name())
 
+	configcli.InitConfigFiles()
+
 	// Setup default feature flags since we have created new config files
 	// TODO(khouzam): This is because AddDefaultFeatureFlagsIfMissing() has already
 	// been called in an init() function.  We should fix that in a more generic way.

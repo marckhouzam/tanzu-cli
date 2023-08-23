@@ -12,6 +12,7 @@ import (
 	"github.com/vmware-tanzu/tanzu-cli/pkg/catalog"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/cli"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/plugin"
@@ -94,6 +95,8 @@ var _ = Describe("GetInstalledServerPlugins", func() {
 		os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
 		err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), configFileNG.Name())
 		Expect(err).To(BeNil(), "Error while coping tanzu config-ng file for testing")
+
+		config.InitConfigFiles()
 	})
 	AfterEach(func() {
 		os.RemoveAll(cdir)
@@ -193,6 +196,8 @@ var _ = Describe("GetInstalledPlugins (both standalone and context plugins)", fu
 		os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
 		err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), configFileNG.Name())
 		Expect(err).To(BeNil(), "Error while coping tanzu config-ng file for testing")
+
+		config.InitConfigFiles()
 
 		originalVarValue = os.Getenv(constants.ConfigVariableStandaloneOverContextPlugins)
 	})
@@ -367,6 +372,8 @@ var _ = Describe("GetInstalledPlugins (both standalone and context plugins)", fu
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), configFileNG.Name())
 			Expect(err).To(BeNil(), "Error while coping tanzu config-ng file for testing")
+
+			config.InitConfigFiles()
 		})
 		AfterEach(func() {
 			os.RemoveAll(cdir)

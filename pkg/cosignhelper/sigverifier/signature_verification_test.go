@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/configpaths"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/cosignhelper"
@@ -45,6 +46,8 @@ var _ = Describe("Unit tests for discovery image signature verification", func()
 			configFileNG, err = os.CreateTemp("", "config_ng")
 			Expect(err).To(BeNil())
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
+
+			config.InitConfigFiles()
 
 			image = "test-image:latest"
 		})
@@ -100,6 +103,8 @@ var _ = Describe("Unit tests for discovery image signature verification", func()
 			configFileNG, err = os.CreateTemp("", "config_ng")
 			Expect(err).To(BeNil())
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
+
+			config.InitConfigFiles()
 		})
 		AfterEach(func() {
 			os.Unsetenv("TANZU_CONFIG")

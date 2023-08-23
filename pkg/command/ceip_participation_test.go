@@ -10,6 +10,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
+
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 )
 
 var _ = Describe("ceip-participation command tests", func() {
@@ -33,6 +35,8 @@ var _ = Describe("ceip-participation command tests", func() {
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", tkgConfigFileNG.Name())
 			err = copy.Copy(filepath.Join("..", "fakes", "config", "tanzu_config_ng.yaml"), tkgConfigFileNG.Name())
 			Expect(err).To(BeNil(), "Error while copying tanzu config_ng.yaml file for testing")
+
+			config.InitConfigFiles()
 		})
 		AfterEach(func() {
 			os.Unsetenv("TANZU_CONFIG")

@@ -63,6 +63,8 @@ func setupLocalDistroForTesting() func() {
 	os.Setenv("TANZU_CONFIG_NEXT_GEN", configNextGenFile)
 	os.Setenv("HOME", tmpHomeDir)
 
+	config.InitConfigFiles()
+
 	err = copy.Copy(filepath.Join("test", "local"), common.DefaultLocalPluginDistroDir)
 	if err != nil {
 		log.Fatal(err, "Error while setting local distro for testing")

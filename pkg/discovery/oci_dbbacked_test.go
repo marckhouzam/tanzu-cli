@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/vmware-tanzu/tanzu-cli/pkg/config"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/constants"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/plugininventory"
 	configtypes "github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
@@ -72,6 +73,8 @@ var _ = Describe("Unit tests for DB-backed OCI discovery", func() {
 			configFileNG, err = os.CreateTemp("", "config_ng")
 			Expect(err).To(BeNil())
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
+
+			config.InitConfigFiles()
 		})
 		AfterEach(func() {
 			os.Unsetenv("TANZU_CONFIG")
@@ -214,6 +217,8 @@ var _ = Describe("Unit tests for DB-backed OCI discovery", func() {
 			configFileNG, err = os.CreateTemp("", "config_ng")
 			Expect(err).To(BeNil())
 			os.Setenv("TANZU_CONFIG_NEXT_GEN", configFileNG.Name())
+
+			config.InitConfigFiles()
 		})
 		AfterEach(func() {
 			os.Unsetenv("TANZU_CONFIG")
