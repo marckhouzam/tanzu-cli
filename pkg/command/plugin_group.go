@@ -231,7 +231,7 @@ func displayGroupContentAsList(group *plugininventory.PluginGroup, writer io.Wri
 	output.Render()
 }
 
-func completeAllGroupsAndVersion(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func completeAllGroupsAndVersion(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	if len(args) > 0 {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -242,7 +242,7 @@ func completeAllGroupsAndVersion(_ *cobra.Command, args []string, toComplete str
 		// so now we should complete the group version
 		group := toComplete[:idx]
 		versionToComplete := toComplete[idx+1:]
-		versions, _ := completeGroupVersions(nil, []string{group}, versionToComplete)
+		versions, _ := completeGroupVersions(cmd, []string{group}, versionToComplete)
 		for _, v := range versions {
 			comps = append(comps, fmt.Sprintf("%s:%s", group, v))
 		}
@@ -250,7 +250,7 @@ func completeAllGroupsAndVersion(_ *cobra.Command, args []string, toComplete str
 	}
 
 	// We need to complete a group name
-	groups, err := pluginmanager.DiscoverPluginGroups(nil)
+	groups, err := pluginmanager.DiscoverPluginGroups(discovery.WithUseLocalCacheOnly())
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
@@ -279,7 +279,9 @@ func completeGroupVersions(_ *cobra.Command, args []string, toComplete string) (
 		Name:      groupIdentifier.Name,
 	}
 
-	groups, err := pluginmanager.DiscoverPluginGroups(discovery.WithGroupDiscoveryCriteria(criteria))
+	groups, err := pluginmanager.DiscoverPluginGroups(
+		discovery.WithGroupDiscoveryCriteria(criteria),
+		discovery.WithUseLocalCacheOnly())
 	if err != nil || len(groups) == 0 {
 		return nil, cobra.ShellCompDirectiveError
 	}

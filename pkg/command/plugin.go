@@ -792,12 +792,14 @@ func completeAllPlugins(_ *cobra.Command, args []string, _ string) ([]string, co
 			groupIdentifier.Version = cli.VersionLatest
 		}
 
-		groups, err := pluginmanager.DiscoverPluginGroups(discovery.WithGroupDiscoveryCriteria(&discovery.GroupDiscoveryCriteria{
-			Vendor:    groupIdentifier.Vendor,
-			Publisher: groupIdentifier.Publisher,
-			Name:      groupIdentifier.Name,
-			Version:   groupIdentifier.Version,
-		}))
+		groups, err := pluginmanager.DiscoverPluginGroups(
+			discovery.WithGroupDiscoveryCriteria(&discovery.GroupDiscoveryCriteria{
+				Vendor:    groupIdentifier.Vendor,
+				Publisher: groupIdentifier.Publisher,
+				Name:      groupIdentifier.Name,
+				Version:   groupIdentifier.Version,
+			}),
+			discovery.WithUseLocalCacheOnly())
 		if err != nil || len(groups) == 0 {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -816,9 +818,11 @@ func completeAllPlugins(_ *cobra.Command, args []string, _ string) ([]string, co
 	}
 
 	// Show plugins found in the central repos
-	allPlugins, err = pluginmanager.DiscoverStandalonePlugins(discovery.WithPluginDiscoveryCriteria(&discovery.PluginDiscoveryCriteria{
-		Name:   pluginName,
-		Target: configtypes.StringToTarget(targetStr)}))
+	allPlugins, err = pluginmanager.DiscoverStandalonePlugins(
+		discovery.WithPluginDiscoveryCriteria(&discovery.PluginDiscoveryCriteria{
+			Name:   pluginName,
+			Target: configtypes.StringToTarget(targetStr)}),
+		discovery.WithUseLocalCacheOnly())
 
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
