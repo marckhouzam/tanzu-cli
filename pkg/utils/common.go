@@ -30,3 +30,12 @@ func ContainsString(arr []string, str string) bool {
 func GenerateKey(parts ...string) string {
 	return strings.Join(parts, ":")
 }
+
+// PanicOnErr calls 'panic' if 'err' is non-nil.
+func PanicOnErr(err error) {
+	if err == nil {
+		return
+	}
+
+	panic(err)
+}
