@@ -165,6 +165,15 @@ func newInitDiscoverySourceCmd() *cobra.Command {
 				return err
 			}
 
+			// Refresh the inventory DB
+			discoverySources, _ := configlib.GetCLIDiscoverySources()
+			if len(discoverySources) > 0 {
+				// Ignore any failures since the real operation
+				// the user is trying to do is set the config
+				// to the central repo, which was done above
+				_ = checkDiscoverySource(discoverySources[0])
+			}
+
 			log.Successf("successfully initialized discovery source")
 			return nil
 		},
