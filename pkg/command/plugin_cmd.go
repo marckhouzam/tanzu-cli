@@ -1,7 +1,7 @@
 // Copyright 2022 VMware, Inc. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-package cli
+package command
 
 import (
 	"context"
@@ -11,17 +11,22 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/vmware-tanzu/tanzu-cli/pkg/cli"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
+	"github.com/vmware-tanzu/tanzu-cli/pkg/pluginmanager"
+	configtypes "github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/log"
 )
 
 // GetCmdForPlugin returns a cobra command for the plugin.
-func GetCmdForPlugin(p *PluginInfo) *cobra.Command {
+func GetCmdForPlugin(p *cli.PluginInfo) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   p.Name,
 		Short: p.Description,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runner := NewRunner(p.Name, p.InstallationPath, args)
+			pluginmanager.MakeSurePluginIsInstalled(cmd.Name(), configtypes.TargetK8s)
+
+			runner := cli.NewRunner(p.Name, p.InstallationPath, args)
 			ctx := context.Background()
 			setupPluginEnv()
 			return runner.Run(ctx)
@@ -46,7 +51,7 @@ func GetCmdForPlugin(p *PluginInfo) *cobra.Command {
 		completion = append(completion, args...)
 		completion = append(completion, toComplete)
 
-		runner := NewRunner(p.Name, p.InstallationPath, completion)
+		runner := cli.NewRunner(p.Name, p.InstallationPath, completion)
 		ctx := context.Background()
 		output, _, err := runner.RunOutput(ctx)
 		if err != nil {
@@ -84,7 +89,7 @@ func GetCmdForPlugin(p *PluginInfo) *cobra.Command {
 		helpArgs := getHelpArguments()
 
 		// Pass this new command in to our plugin to have it handle help output
-		runner := NewRunner(p.Name, p.InstallationPath, helpArgs)
+		runner := cli.NewRunner(p.Name, p.InstallationPath, helpArgs)
 		ctx := context.Background()
 		err := runner.Run(ctx)
 		if err != nil {
@@ -130,12 +135,12 @@ func setupPluginEnv() {
 }
 
 // GetTestCmdForPlugin returns a cobra command for the test plugin.
-func GetTestCmdForPlugin(p *PluginInfo) *cobra.Command {
+func GetTestCmdForPlugin(p *cli.PluginInfo) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   p.Name,
 		Short: p.Description,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runner := NewRunner(p.Name, p.InstallationPath, args)
+			runner := cli.NewRunner(p.Name, p.InstallationPath, args)
 			ctx := context.Background()
 			return runner.RunTest(ctx)
 		},

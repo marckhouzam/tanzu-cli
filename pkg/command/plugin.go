@@ -279,7 +279,7 @@ func newInstallPluginCmd() *cobra.Command {
 			}
 
 			pluginVersion := version
-			err = pluginmanager.InstallStandalonePlugin(pluginName, pluginVersion, getTarget())
+			err = pluginmanager.InstallStandalonePlugin(pluginName, pluginVersion, getTarget(), false)
 			if err != nil {
 				return err
 			}
@@ -523,12 +523,16 @@ func displayInstalledAndMissingSplitView(installedStandalonePlugins []cli.Plugin
 
 	outputStandalone := component.NewOutputWriterWithOptions(writer, outputFormat, []component.OutputWriterOption{}, "Name", "Description", "Target", "Version", "Status")
 	for index := range installedStandalonePlugins {
+		status := common.PluginStatusInstalled
+		if installedStandalonePlugins[index].Status == common.PluginStatusUpdateAvailable {
+			status = "ready to be installed"
+		}
 		outputStandalone.AddRow(
 			installedStandalonePlugins[index].Name,
 			installedStandalonePlugins[index].Description,
 			string(installedStandalonePlugins[index].Target),
 			installedStandalonePlugins[index].Version,
-			common.PluginStatusInstalled,
+			status,
 		)
 	}
 	outputStandalone.Render()

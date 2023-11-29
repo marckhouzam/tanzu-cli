@@ -81,7 +81,7 @@ func NewRootCmd() (*cobra.Command, error) {
 	for i := range plugins {
 		// Only add plugins that should be available as root level command
 		if isPluginRootCmdTargeted(&plugins[i]) {
-			cmd := cli.GetCmdForPlugin(&plugins[i])
+			cmd := GetCmdForPlugin(&plugins[i])
 			// check and find if a command/plugin with the same name already exists as part of the root command
 			matchedCmd := findSubCommand(rootCmd, cmd)
 			if matchedCmd == nil { // If the subcommand for the plugin doesn't exist add the command
@@ -246,7 +246,7 @@ func addPluginsToTarget(mapTargetToCmd map[configtypes.Target]*cobra.Command) er
 
 	for i := range installedPlugins {
 		if cmd, exists := mapTargetToCmd[installedPlugins[i].Target]; exists {
-			cmd.AddCommand(cli.GetCmdForPlugin(&installedPlugins[i]))
+			cmd.AddCommand(GetCmdForPlugin(&installedPlugins[i]))
 		}
 	}
 	return nil

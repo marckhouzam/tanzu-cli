@@ -467,8 +467,8 @@ func InitializePlugin(plugin *cli.PluginInfo) error {
 }
 
 // InstallStandalonePlugin installs a plugin by name, version and target as a standalone plugin.
-func InstallStandalonePlugin(pluginName, version string, target configtypes.Target) error {
-	return installPlugin(pluginName, version, target, "")
+func InstallStandalonePlugin(pluginName, version string, target configtypes.Target, install bool) error {
+	return installPlugin(pluginName, version, target, "", install)
 }
 
 // InstallPluginFromContext installs a plugin by name, version and target as a context-scope plugin.
@@ -476,7 +476,7 @@ func InstallPluginFromContext(pluginName, version string, target configtypes.Tar
 	if contextName == "" {
 		log.Warningf("Missing context name for a context-scope plugin: %s/%s/%s", pluginName, version, string(target))
 	}
-	return installPlugin(pluginName, version, target, contextName)
+	return installPlugin(pluginName, version, target, contextName, true)
 }
 
 // installs a plugin by name, version and target.
@@ -484,7 +484,7 @@ func InstallPluginFromContext(pluginName, version string, target configtypes.Tar
 // we are installing a standalone plugin.
 //
 //nolint:gocyclo
-func installPlugin(pluginName, version string, target configtypes.Target, contextName string) error {
+func installPlugin(pluginName, version string, target configtypes.Target, contextName string, install bool) error {
 	discoveries, err := getPluginDiscoveries()
 	if err != nil {
 		return err
@@ -553,11 +553,17 @@ func installPlugin(pluginName, version string, target configtypes.Target, contex
 	}
 
 	if len(matchedPlugins) == 1 {
+		if !install {
+			return fakeInstall(&matchedPlugins[0], matchedPlugins[0].RecommendedVersion, false)
+		}
 		return installOrUpgradePlugin(&matchedPlugins[0], matchedPlugins[0].RecommendedVersion, false)
 	}
 
 	for i := range matchedPlugins {
 		if matchedPlugins[i].Target == target {
+			if !install {
+				return fakeInstall(&matchedPlugins[i], matchedPlugins[i].RecommendedVersion, false)
+			}
 			return installOrUpgradePlugin(&matchedPlugins[i], matchedPlugins[i].RecommendedVersion, false)
 		}
 	}
@@ -569,7 +575,7 @@ func installPlugin(pluginName, version string, target configtypes.Target, contex
 func UpgradePlugin(pluginName, version string, target configtypes.Target) error {
 	// Upgrade is only triggered from a manual user operation.
 	// This means a plugin is installed manually, which means it is installed as a standalone plugin.
-	return InstallStandalonePlugin(pluginName, version, target)
+	return InstallStandalonePlugin(pluginName, version, target, false)
 }
 
 // InstallPluginsFromGroup installs either the specified plugin or all plugins from the specified group version.
@@ -602,7 +608,7 @@ func InstallPluginsFromGivenPluginGroup(pluginName, groupIDAndVersion string, pg
 			pluginExist = true
 			if plugin.Mandatory {
 				mandatoryPluginsExist = true
-				err := InstallStandalonePlugin(plugin.Name, plugin.Version, plugin.Target)
+				err := InstallStandalonePlugin(plugin.Name, plugin.Version, plugin.Target, false)
 				if err != nil {
 					numErrors++
 					log.Warningf("unable to install plugin '%s': %v", plugin.Name, err.Error())
@@ -705,6 +711,46 @@ func logPluginInstallationMessage(p *discovery.Discovered, version string, isPlu
 	}
 }
 
+func fakeInstall(p *discovery.Discovered, version string, installTestPlugin bool) error {
+	// If the version requested was the RecommendedVersion, we should set it explicitly
+	if version == "" || version == cli.VersionLatest {
+		version = p.RecommendedVersion
+	}
+
+	log.Infof("Preparing plugin '%v:%v'", p.Name, version)
+
+	plugin := getPluginFromCache(p, version)
+
+	if plugin != nil {
+		// remove the cached plugin so we can get a feel for what it would be like to install it
+		pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", p.Target)
+		pluginPath := filepath.Join(common.DefaultPluginRoot, p.Name, pluginFileName)
+
+		if cli.BuildArch().IsWindows() {
+			pluginPath += exe
+		}
+		_ = os.Remove(pluginPath)
+	}
+
+	plugin = &cli.PluginInfo{
+		Name:        p.Name,
+		Description: "desc for " + p.Name,
+		Target:      p.Target,
+		Version:     version,
+		BuildSHA:    "12345",
+	}
+	pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", p.Target)
+	pluginPath := filepath.Join(common.DefaultPluginRoot, p.Name, pluginFileName)
+	plugin.InstallationPath = pluginPath
+	plugin.Discovery = p.Source
+	plugin.DiscoveredRecommendedVersion = p.RecommendedVersion
+	plugin.Target = p.Target
+	plugin.Scope = p.Scope
+	plugin.Status = common.PluginStatusUpdateAvailable
+
+	return updatePluginInfoAndInitializePlugin(p, plugin)
+}
+
 func installOrUpgradePlugin(p *discovery.Discovered, version string, installTestPlugin bool) error {
 	// If the version requested was the RecommendedVersion, we should set it explicitly
 	if version == "" || version == cli.VersionLatest {
@@ -747,21 +793,16 @@ func installOrUpgradePlugin(p *discovery.Discovered, version string, installTest
 }
 
 func getPluginFromCache(p *discovery.Discovered, version string) *cli.PluginInfo {
-	pluginArtifact, err := p.Distribution.DescribeArtifact(version, cli.GOOS, cli.GOARCH)
-	if err != nil {
-		return nil
-	}
-
 	// TODO(khouzam): We should not be checking the presence of the binary directly here,
 	// as it bypasses the plugin catalog abstraction.  Instead, we should ask the plugin
 	// catalog to know if the plugin binary is present already.
-	pluginFileName := fmt.Sprintf("%s_%s_%s", version, pluginArtifact.Digest, p.Target)
+	pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", p.Target)
 	pluginPath := filepath.Join(common.DefaultPluginRoot, p.Name, pluginFileName)
 
 	if cli.BuildArch().IsWindows() {
 		pluginPath += exe
 	}
-	if _, err = os.Stat(pluginPath); err != nil {
+	if _, err := os.Stat(pluginPath); err != nil {
 		return nil
 	}
 
@@ -797,7 +838,7 @@ func fetchAndVerifyPlugin(p *discovery.Discovered, version string) ([]byte, erro
 }
 
 func installAndDescribePlugin(p *discovery.Discovered, version string, binary []byte) (*cli.PluginInfo, error) {
-	pluginFileName := fmt.Sprintf("%s_%x_%s", version, sha256.Sum256(binary), p.Target)
+	pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", p.Target)
 	pluginPath := filepath.Join(common.DefaultPluginRoot, p.Name, pluginFileName)
 
 	if err := os.MkdirAll(filepath.Dir(pluginPath), os.ModePerm); err != nil {
@@ -871,14 +912,14 @@ func updatePluginInfoAndInitializePlugin(p *discovery.Discovered, plugin *cli.Pl
 	// `addPluginToCommandTreeCache` invocations which is not what we want.
 	c.Unlock()
 
-	if err := InitializePlugin(plugin); err != nil {
-		log.Infof("could not initialize plugin after installing: %v", err.Error())
-	}
-	if err := config.ConfigureDefaultFeatureFlagsIfMissing(plugin.DefaultFeatureFlags); err != nil {
-		log.Infof("could not configure default featureflags for the plugin: %v", err.Error())
-	}
-	// add plugin to the plugin command tree cache for telemetry to consume later for plugin command chain parsing
-	addPluginToCommandTreeCache(plugin)
+	// if err := InitializePlugin(plugin); err != nil {
+	// 	log.Infof("could not initialize plugin after installing: %v", err.Error())
+	// }
+	// if err := config.ConfigureDefaultFeatureFlagsIfMissing(plugin.DefaultFeatureFlags); err != nil {
+	// 	log.Infof("could not configure default featureflags for the plugin: %v", err.Error())
+	// }
+	// // add plugin to the plugin command tree cache for telemetry to consume later for plugin command chain parsing
+	// addPluginToCommandTreeCache(plugin)
 	return nil
 }
 
@@ -1605,4 +1646,30 @@ func isNewPluginVersionAvailable(plugins []*plugininventory.PluginGroupPluginEnt
 	}
 
 	return false // No new version available
+}
+
+func MakeSurePluginIsInstalled(name string, target configtypes.Target) {
+	criteria := &discovery.PluginDiscoveryCriteria{
+		Name:   name,
+		Target: configtypes.TargetK8s,
+	}
+
+	plugins, err := DiscoverStandalonePlugins(
+		discovery.WithPluginDiscoveryCriteria(criteria),
+		discovery.WithUseLocalCacheOnly())
+
+	if err != nil {
+		return
+	}
+
+	version := plugins[0].RecommendedVersion
+	pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", target)
+	pluginPath := filepath.Join(common.DefaultPluginRoot, name, pluginFileName)
+
+	if cli.BuildArch().IsWindows() {
+		pluginPath += ".exe"
+	}
+	if _, err := os.Stat(pluginPath); err != nil {
+		InstallStandalonePlugin(name, version, configtypes.TargetK8s, true)
+	}
 }
