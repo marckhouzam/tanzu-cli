@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -20,6 +21,8 @@ import (
 	"github.com/vmware-tanzu/tanzu-cli/pkg/utils"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/log"
 )
+
+const inventoryRefreshTTLInMins = 30
 
 // DBBackedOCIDiscovery is an artifact discovery utilizing an OCI image
 // which contains an SQLite database describing the content of the plugin
@@ -40,6 +43,7 @@ type DBBackedOCIDiscovery struct {
 	groupCriteria *GroupDiscoveryCriteria
 	// useLocalCacheOnly enable to pull the plugins and plugin groups data from the cache
 	useLocalCacheOnly bool
+	forceRefresh      bool
 	// pluginDataDir is the location where the plugin data will be stored once
 	// extracted from the OCI image
 	pluginDataDir string
@@ -173,6 +177,17 @@ func (od *DBBackedOCIDiscovery) listGroupsFromInventory() ([]*plugininventory.Pl
 // fetchInventoryImage downloads the OCI image containing the information about the
 // inventory of this discovery and stores it in the cache directory.
 func (od *DBBackedOCIDiscovery) fetchInventoryImage() error {
+	if !od.forceRefresh && !od.digestFileTTLExpired() {
+		// If we refreshed the inventory image recently, don't refresh again.
+		// The inventory image does not need to be up-to-date by the second.
+		// This avoids uselessly refreshing for commands that are run close together.
+		// For example:
+		//   1- installing plugins for a plugin group (it is fast when the plugins are in the cache)
+		//   2- installing plugins when creating a context (it is fast when the plugins are in the cache)
+		//   3- multiple "plugin search" and "plugin group search" commands in a row
+		return nil
+	}
+
 	// check the cache to see if downloaded plugin inventory database is up-to-date or not
 	// by comparing the image digests
 	newCacheHashFileForInventoryImage, newCacheHashFileForMetadataImage, err := od.checkImageCache()
@@ -182,6 +197,7 @@ func (od *DBBackedOCIDiscovery) fetchInventoryImage() error {
 
 	if newCacheHashFileForInventoryImage == "" && newCacheHashFileForMetadataImage == "" {
 		// The cache can be re-used. We are done.
+		od.resetDigestFileTTL()
 		return nil
 	}
 
@@ -204,7 +220,10 @@ func (od *DBBackedOCIDiscovery) fetchInventoryImage() error {
 	// Now that everything is ready, create the digest hash file
 	if newCacheHashFileForInventoryImage != "" {
 		_, _ = os.Create(newCacheHashFileForInventoryImage)
+	} else {
+		od.resetDigestFileTTL()
 	}
+
 	// Also create digest hash file for inventory metadata image if not empty
 	if newCacheHashFileForMetadataImage != "" {
 		_, _ = os.Create(newCacheHashFileForMetadataImage)
@@ -328,4 +347,25 @@ func (od *DBBackedOCIDiscovery) checkDigestFileExistence(hashHexVal, digestPrefi
 		os.Remove(matches[0])
 	}
 	return correctHashFile
+}
+
+// digestFileTTLExpired checks if the last time the digest file was verified has passed its TTL.
+func (od *DBBackedOCIDiscovery) digestFileTTLExpired() bool {
+	matches, _ := filepath.Glob(filepath.Join(od.pluginDataDir, "digest.*"))
+	if len(matches) == 1 {
+		if stat, err := os.Stat(matches[0]); err == nil {
+			return time.Since(stat.ModTime()) > time.Duration(inventoryRefreshTTLInMins)*time.Minute
+		}
+	}
+	return true
+}
+
+// resetDigestFileTTL resets the modification timestamp of the digest file to the current time.
+// This is used to avoid checking the inventory image digest too often.
+func (od *DBBackedOCIDiscovery) resetDigestFileTTL() {
+	matches, _ := filepath.Glob(filepath.Join(od.pluginDataDir, "digest.*"))
+	if len(matches) == 1 {
+		var zeroTime time.Time
+		_ = os.Chtimes(matches[0], zeroTime, time.Now())
+	}
 }

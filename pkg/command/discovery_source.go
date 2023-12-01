@@ -200,7 +200,7 @@ func createDiscoverySource(dsName, uri string) (configtypes.PluginDiscovery, err
 // checkDiscoverySource attempts to access the content of the discovery to
 // confirm it is valid
 func checkDiscoverySource(source configtypes.PluginDiscovery) error {
-	discObject, err := discovery.CreateDiscoveryFromV1alpha1(source)
+	discObject, err := discovery.CreateDiscoveryFromV1alpha1(source, discovery.WithForceRefresh())
 	if err != nil {
 		return err
 	}
