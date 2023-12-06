@@ -14,7 +14,6 @@ import (
 	"github.com/vmware-tanzu/tanzu-cli/pkg/cli"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/common"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/pluginmanager"
-	configtypes "github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/log"
 )
 
@@ -24,7 +23,7 @@ func GetCmdForPlugin(p *cli.PluginInfo) *cobra.Command {
 		Use:   p.Name,
 		Short: p.Description,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pluginmanager.MakeSurePluginIsInstalled(cmd.Name(), configtypes.TargetK8s)
+			pluginmanager.MakeSurePluginIsInstalled(p.Name, p.Version, p.Target)
 
 			runner := cli.NewRunner(p.Name, p.InstallationPath, args)
 			ctx := context.Background()

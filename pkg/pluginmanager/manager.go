@@ -467,8 +467,8 @@ func InitializePlugin(plugin *cli.PluginInfo) error {
 }
 
 // InstallStandalonePlugin installs a plugin by name, version and target as a standalone plugin.
-func InstallStandalonePlugin(pluginName, version string, target configtypes.Target, install bool) error {
-	return installPlugin(pluginName, version, target, "", install)
+func InstallStandalonePlugin(pluginName, version string, target configtypes.Target, realInstall bool) error {
+	return installPlugin(pluginName, version, target, "", realInstall)
 }
 
 // InstallPluginFromContext installs a plugin by name, version and target as a context-scope plugin.
@@ -476,7 +476,7 @@ func InstallPluginFromContext(pluginName, version string, target configtypes.Tar
 	if contextName == "" {
 		log.Warningf("Missing context name for a context-scope plugin: %s/%s/%s", pluginName, version, string(target))
 	}
-	return installPlugin(pluginName, version, target, contextName, true)
+	return installPlugin(pluginName, version, target, contextName, false)
 }
 
 // installs a plugin by name, version and target.
@@ -484,7 +484,7 @@ func InstallPluginFromContext(pluginName, version string, target configtypes.Tar
 // we are installing a standalone plugin.
 //
 //nolint:gocyclo
-func installPlugin(pluginName, version string, target configtypes.Target, contextName string, install bool) error {
+func installPlugin(pluginName, version string, target configtypes.Target, contextName string, realInstall bool) error {
 	discoveries, err := getPluginDiscoveries()
 	if err != nil {
 		return err
@@ -553,18 +553,12 @@ func installPlugin(pluginName, version string, target configtypes.Target, contex
 	}
 
 	if len(matchedPlugins) == 1 {
-		if !install {
-			return fakeInstall(&matchedPlugins[0], matchedPlugins[0].RecommendedVersion, false)
-		}
-		return installOrUpgradePlugin(&matchedPlugins[0], matchedPlugins[0].RecommendedVersion, false)
+		return installOrUpgradePlugin(&matchedPlugins[0], matchedPlugins[0].RecommendedVersion, false, realInstall)
 	}
 
 	for i := range matchedPlugins {
 		if matchedPlugins[i].Target == target {
-			if !install {
-				return fakeInstall(&matchedPlugins[i], matchedPlugins[i].RecommendedVersion, false)
-			}
-			return installOrUpgradePlugin(&matchedPlugins[i], matchedPlugins[i].RecommendedVersion, false)
+			return installOrUpgradePlugin(&matchedPlugins[i], matchedPlugins[i].RecommendedVersion, false, realInstall)
 		}
 	}
 	errorList = append(errorList, errors.Errorf(missingTargetStr, pluginName))
@@ -721,37 +715,25 @@ func fakeInstall(p *discovery.Discovered, version string, installTestPlugin bool
 
 	plugin := getPluginFromCache(p, version)
 
-	if plugin != nil {
-		// remove the cached plugin so we can get a feel for what it would be like to install it
-		pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", p.Target)
-		pluginPath := filepath.Join(common.DefaultPluginRoot, p.Name, pluginFileName)
-
-		if cli.BuildArch().IsWindows() {
-			pluginPath += exe
-		}
-		_ = os.Remove(pluginPath)
-	}
-
 	plugin = &cli.PluginInfo{
 		Name:        p.Name,
-		Description: "desc for " + p.Name,
+		Description: p.Description,
 		Target:      p.Target,
 		Version:     version,
 		BuildSHA:    "12345",
 	}
-	pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", p.Target)
-	pluginPath := filepath.Join(common.DefaultPluginRoot, p.Name, pluginFileName)
-	plugin.InstallationPath = pluginPath
+	// Fake the installation path
+	plugin.InstallationPath = filepath.Join(common.DefaultPluginRoot, p.Name, fmt.Sprintf("%s_fake_%s", version, p.Target))
 	plugin.Discovery = p.Source
 	plugin.DiscoveredRecommendedVersion = p.RecommendedVersion
 	plugin.Target = p.Target
 	plugin.Scope = p.Scope
-	plugin.Status = common.PluginStatusUpdateAvailable
+	plugin.Status = common.PluginStatusReadyForInstallation
 
 	return updatePluginInfoAndInitializePlugin(p, plugin)
 }
 
-func installOrUpgradePlugin(p *discovery.Discovered, version string, installTestPlugin bool) error {
+func installOrUpgradePlugin(p *discovery.Discovered, version string, installTestPlugin bool, realInstall bool) error {
 	// If the version requested was the RecommendedVersion, we should set it explicitly
 	if version == "" || version == cli.VersionLatest {
 		version = p.RecommendedVersion
@@ -773,6 +755,11 @@ func installOrUpgradePlugin(p *discovery.Discovered, version string, installTest
 	logPluginInstallationMessage(p, version, plugin != nil, isPluginAlreadyInstalled)
 
 	if plugin == nil {
+		// The binary is not in the cache and must be downloaded.  If we are not doing a real install, we fake it.
+		if !realInstall {
+			return fakeInstall(p, version, installTestPlugin)
+		}
+
 		binary, err := fetchAndVerifyPlugin(p, version)
 		if err != nil {
 			return err
@@ -793,16 +780,21 @@ func installOrUpgradePlugin(p *discovery.Discovered, version string, installTest
 }
 
 func getPluginFromCache(p *discovery.Discovered, version string) *cli.PluginInfo {
+	pluginArtifact, err := p.Distribution.DescribeArtifact(version, cli.GOOS, cli.GOARCH)
+	if err != nil {
+		return nil
+	}
+
 	// TODO(khouzam): We should not be checking the presence of the binary directly here,
 	// as it bypasses the plugin catalog abstraction.  Instead, we should ask the plugin
 	// catalog to know if the plugin binary is present already.
-	pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", p.Target)
+	pluginFileName := fmt.Sprintf("%s_%s_%s", version, pluginArtifact.Digest, p.Target)
 	pluginPath := filepath.Join(common.DefaultPluginRoot, p.Name, pluginFileName)
 
 	if cli.BuildArch().IsWindows() {
 		pluginPath += exe
 	}
-	if _, err := os.Stat(pluginPath); err != nil {
+	if _, err = os.Stat(pluginPath); err != nil {
 		return nil
 	}
 
@@ -838,7 +830,7 @@ func fetchAndVerifyPlugin(p *discovery.Discovered, version string) ([]byte, erro
 }
 
 func installAndDescribePlugin(p *discovery.Discovered, version string, binary []byte) (*cli.PluginInfo, error) {
-	pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", p.Target)
+	pluginFileName := fmt.Sprintf("%s_%x_%s", version, sha256.Sum256(binary), p.Target)
 	pluginPath := filepath.Join(common.DefaultPluginRoot, p.Name, pluginFileName)
 
 	if err := os.MkdirAll(filepath.Dir(pluginPath), os.ModePerm); err != nil {
@@ -1194,13 +1186,13 @@ func InstallPluginsFromLocalSource(pluginName, version string, target configtype
 	}
 
 	if len(matchedPlugins) == 1 {
-		return installOrUpgradePlugin(&matchedPlugins[0], version, installTestPlugin)
+		return installOrUpgradePlugin(&matchedPlugins[0], version, installTestPlugin, true)
 	}
 
 	for i := range matchedPlugins {
 		// Install all plugins otherwise include all matching plugins
 		if pluginName == cli.AllPlugins || matchedPlugins[i].Target == target {
-			err = installOrUpgradePlugin(&matchedPlugins[i], version, installTestPlugin)
+			err = installOrUpgradePlugin(&matchedPlugins[i], version, installTestPlugin, true)
 			if err != nil {
 				errList = append(errList, err)
 			}
@@ -1648,28 +1640,15 @@ func isNewPluginVersionAvailable(plugins []*plugininventory.PluginGroupPluginEnt
 	return false // No new version available
 }
 
-func MakeSurePluginIsInstalled(name string, target configtypes.Target) {
-	criteria := &discovery.PluginDiscoveryCriteria{
-		Name:   name,
-		Target: configtypes.TargetK8s,
-	}
-
-	plugins, err := DiscoverStandalonePlugins(
-		discovery.WithPluginDiscoveryCriteria(criteria),
-		discovery.WithUseLocalCacheOnly())
-
-	if err != nil {
-		return
-	}
-
-	version := plugins[0].RecommendedVersion
-	pluginFileName := fmt.Sprintf("%s_%s_%s", version, "1111111111111111111111111111111111111111111111111111111111111111", target)
-	pluginPath := filepath.Join(common.DefaultPluginRoot, name, pluginFileName)
-
+// If the plugin is not in the cache, we install it (meaning we download it and install it).
+// If it is in the cache it means it is installed
+func MakeSurePluginIsInstalled(pluginName, version string, target configtypes.Target) {
+	pluginPathGlobExpr := filepath.Join(common.DefaultPluginRoot, pluginName, fmt.Sprintf("%s_*_%s", version, target))
 	if cli.BuildArch().IsWindows() {
-		pluginPath += ".exe"
+		pluginPathGlobExpr += ".exe"
 	}
-	if _, err := os.Stat(pluginPath); err != nil {
-		InstallStandalonePlugin(name, version, configtypes.TargetK8s, true)
+	matches, _ := filepath.Glob(pluginPathGlobExpr)
+	if len(matches) == 0 {
+		InstallStandalonePlugin(pluginName, version, target, true)
 	}
 }
