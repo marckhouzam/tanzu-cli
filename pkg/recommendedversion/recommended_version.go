@@ -232,9 +232,11 @@ func shouldCheckVersion() bool {
 	return time.Since(lastCheckTime) > time.Duration(delay)*time.Second
 }
 
-func printVersionRecommendations(writer io.Writer, currentVersion, major, minor, patch string) {
-	if (major == "" || !utils.IsNewVersion(major, currentVersion)) &&
-		(minor == "" || !utils.IsNewVersion(minor, currentVersion)) &&
+func printVersionRecommendations(writer io.Writer, currentVersion, _, minor, patch string) {
+	// Only print the message for minor and patch versions.
+	// We don't print anything for major versions because they are breaking changes
+	// and it will take a while for the user to upgrade to a new major version.
+	if (minor == "" || !utils.IsNewVersion(minor, currentVersion)) &&
 		(patch == "" || !utils.IsNewVersion(patch, currentVersion)) {
 		// The current version is the best recommended version
 		return
@@ -246,12 +248,6 @@ func printVersionRecommendations(writer io.Writer, currentVersion, major, minor,
 	fmt.Fprintf(writer, "Note: A new version of the Tanzu CLI is available. You are at version: %s.\n", currentVersion)
 	fmt.Fprintln(writer, "To benefit from the latest security and features, please update to a recommended version:")
 
-	if major != "" {
-		// Only print the major version if it is a new version
-		if utils.IsNewVersion(major, currentVersion) {
-			fmt.Fprintf(writer, "  - %s\n", major)
-		}
-	}
 	if minor != "" {
 		// Only print the recommended version if it is a newer version
 		if utils.IsNewVersion(minor, currentVersion) {

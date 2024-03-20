@@ -410,10 +410,10 @@ func TestPrintVersionRecommendations(t *testing.T) {
 			contains:         []string{"Note:", "v1.4.3"},
 		},
 		{
-			name:             "Recommend major",
+			name:             "We don't recommend major",
 			currentVersion:   "v1.3.0",
 			recommendedMajor: "v2.4.3",
-			contains:         []string{"Note:", "v2.4.3"},
+			contains:         []string{},
 		},
 		{
 			name:             "Recommend patch and minor",
@@ -427,14 +427,14 @@ func TestPrintVersionRecommendations(t *testing.T) {
 			currentVersion:   "v1.3.0",
 			recommendedPatch: "v1.3.3",
 			recommendedMajor: "v2.4.3",
-			contains:         []string{"Note:", "v1.3.3", "v2.4.3"},
+			contains:         []string{"Note:", "v1.3.3"},
 		},
 		{
 			name:             "Recommend major and minor",
 			currentVersion:   "v1.3.0",
 			recommendedMinor: "v1.4.3",
 			recommendedMajor: "v2.4.3",
-			contains:         []string{"Note:", "v1.4.3", "v2.4.3"},
+			contains:         []string{"Note:", "v1.4.3"},
 		},
 		{
 			name:             "Recommend patch and minor and major",
@@ -442,7 +442,7 @@ func TestPrintVersionRecommendations(t *testing.T) {
 			recommendedMajor: "v2.4.3",
 			recommendedPatch: "v1.3.3",
 			recommendedMinor: "v1.4.3",
-			contains:         []string{"Note:", "v1.3.3", "v1.4.3", "v2.4.3"},
+			contains:         []string{"Note:", "v1.3.3", "v1.4.3"},
 		},
 		{
 			name:             "Recommend older patch",
@@ -468,7 +468,7 @@ func TestPrintVersionRecommendations(t *testing.T) {
 			recommendedMajor: "v2.4.3-rc.0",
 			recommendedMinor: "v1.4.3-alpha.0",
 			recommendedPatch: "v1.3.0-beta.0",
-			contains:         []string{"Note:", "v2.4.3-rc.0", "v1.4.3-alpha.0", "v1.3.0-beta.0"},
+			contains:         []string{"Note:", "v1.4.3-alpha.0", "v1.3.0-beta.0"},
 		},
 		{
 			name:             "With older pre-release",
