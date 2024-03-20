@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/vmware-tanzu/tanzu-cli/pkg/buildinfo"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/centralconfig"
@@ -60,12 +61,17 @@ func CheckRecommendedCLIVersion(cmd *cobra.Command) {
 		return
 	}
 
-	value, ok := recommendedVersionValue.(string)
-	if !ok {
+	wrapper := make(map[string]interface{})
+	key := "fakeKey"
+	wrapper[key] = recommendedVersionValue
+	versions, ok, err := unstructured.NestedStringSlice(wrapper, key)
+
+	if err != nil || !ok {
 		log.V(7).Error(err, "wrong format for recommended versions in central config")
 		return
 	}
-	recommendedVersions, err := sortRecommendedVersionsDescending(value)
+
+	recommendedVersions, err := sortRecommendedVersionsDescending(versions)
 	if err != nil {
 		log.V(7).Error(err, "failed to sort recommended versions")
 		return
@@ -165,36 +171,32 @@ func findRecommendedPatchVersion(recommendedVersions []string, currentVersion st
 	return ""
 }
 
-// sortRecommendedVersionsDescending will convert the comma-separated list of recommended
+// sortRecommendedVersionsDescending will convert the array of recommended
 // versions into an array sorted in descending order of semver
-func sortRecommendedVersionsDescending(recommendedVersionStr string) ([]string, error) {
-	// The value is in the form "v1.2.1,v1.1.0,v0.90.1"
-	// which is a comma separated list of recommended versions for each minor version of the CLI.
-	recommendedArray := strings.Split(recommendedVersionStr, ",")
-
+func sortRecommendedVersionsDescending(recommendedVersions []string) ([]string, error) {
 	// Trim any spaces around the version strings and remove duplicates
-	recommendedVersions := make([]string, 0, len(recommendedArray))
+	finalVersions := make([]string, 0, len(recommendedVersions))
 	alreadyPresent := make(map[string]bool)
-	for _, newVersion := range recommendedArray {
+	for _, newVersion := range recommendedVersions {
 		trimmedVersion := strings.TrimSpace(newVersion)
 		if trimmedVersion != "" && !alreadyPresent[trimmedVersion] {
-			recommendedVersions = append(recommendedVersions, trimmedVersion)
+			finalVersions = append(finalVersions, trimmedVersion)
 			alreadyPresent[trimmedVersion] = true
 		}
 	}
 
 	// Now sort the versions, then reverse the order
-	err := utils.SortVersions(recommendedVersions)
+	err := utils.SortVersions(finalVersions)
 	if err != nil {
 		return nil, err
 	}
 
 	// Reverse the order so it is descending
-	for i := len(recommendedVersions)/2 - 1; i >= 0; i-- {
-		opp := len(recommendedVersions) - 1 - i
-		recommendedVersions[i], recommendedVersions[opp] = recommendedVersions[opp], recommendedVersions[i]
+	for i := len(finalVersions)/2 - 1; i >= 0; i-- {
+		opp := len(finalVersions) - 1 - i
+		finalVersions[i], finalVersions[opp] = finalVersions[opp], finalVersions[i]
 	}
-	return recommendedVersions, err
+	return finalVersions, err
 }
 
 func getRecommendationDelayInSeconds() int {

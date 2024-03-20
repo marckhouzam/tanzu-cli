@@ -86,7 +86,15 @@ func TestGetCentralConfigEntry(t *testing.T) {
 			expected: map[string]interface{}{"testSubKey": "testValue"},
 		},
 		{
-			name: "More map of array value",
+			name: "An array value",
+			cfgContent: `testKey:
+  - testValue1
+  - testValue2`,
+			key:      "testKey",
+			expected: interface{}([]interface{}{"testValue1", "testValue2"}),
+		},
+		{
+			name: "A map of array value",
 			cfgContent: `testKey:
   testSubKey:
   - testValue1
@@ -95,6 +103,22 @@ func TestGetCentralConfigEntry(t *testing.T) {
 			expected: map[string]interface{}{"testSubKey": []interface{}{"testValue1", "testValue2"}},
 		},
 		{
+			name: "A complex string",
+			cfgContent: `testKey: |-
+ {
+   "testSubKey": [ 
+     "testValue1",
+     "testValue1"
+   ]
+ }`,
+			key: "testKey",
+			expected: `{
+  "testSubKey": [ 
+    "testValue1",
+    "testValue1"
+  ]
+}`,
+		}, {
 			name: "Missing key",
 			cfgContent: `testKey:
   testSubKey:

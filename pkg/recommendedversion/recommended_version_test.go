@@ -212,33 +212,33 @@ func TestFindRecommendedPatchVersion(t *testing.T) {
 func TestSortRecommendedVersionsDescending(t *testing.T) {
 	tests := []struct {
 		name        string
-		recommended string
+		recommended []string
 		expected    []string
 		expectedErr string
 	}{
 		{
 			name:        "Mixed versions",
-			recommended: "v1.1.1,v2.0.2,v2.1.0-alpha.2,v1.3.3,v0.90.0,v1.4.4,v1.5.0-beta.0,v1.2.2",
+			recommended: []string{"v1.1.1", "v2.0.2", "v2.1.0-alpha.2", "v1.3.3", "v0.90.0", "v1.4.4", "v1.5.0-beta.0", "v1.2.2"},
 			expected:    []string{"v2.1.0-alpha.2", "v2.0.2", "v1.5.0-beta.0", "v1.4.4", "v1.3.3", "v1.2.2", "v1.1.1", "v0.90.0"},
 		},
 		{
 			name:        "Mixed versions with empty versions",
-			recommended: "v1.1.1,v2.0.2,v2.1.0-alpha.2,,v1.3.3,v0.90.0,,v1.4.4,v1.5.0-beta.0,v1.2.2",
+			recommended: []string{"v1.1.1", "v2.0.2", "v2.1.0-alpha.2", "", "v1.3.3", "v0.90.0", "", "v1.4.4", "v1.5.0-beta.0", "v1.2.2"},
 			expected:    []string{"v2.1.0-alpha.2", "v2.0.2", "v1.5.0-beta.0", "v1.4.4", "v1.3.3", "v1.2.2", "v1.1.1", "v0.90.0"},
 		},
 		{
 			name:        "Mixed versions with spaces and empty versions",
-			recommended: "v1.1.1 ,v2.0.2,   v2.1.0-alpha.2,  ,v1.3.3,  v0.90.0,,v1.4.4,  v1.5.0-beta.0, v1.2.2",
+			recommended: []string{"v1.1.1 ", "v2.0.2", "   v2.1.0-alpha.2", "  ", "v1.3.3", "  v0.90.0", "", "v1.4.4", "  v1.5.0-beta.0", " v1.2.2"},
 			expected:    []string{"v2.1.0-alpha.2", "v2.0.2", "v1.5.0-beta.0", "v1.4.4", "v1.3.3", "v1.2.2", "v1.1.1", "v0.90.0"},
 		},
 		{
 			name:        "With invalid versions",
-			recommended: "v1.1.1,v2.0.2,invalid-version",
+			recommended: []string{"v1.1.1", "v2.0.2", "invalid-version"},
 			expectedErr: "Invalid Semantic Version",
 		},
 		{
 			name:        "Repeating versions",
-			recommended: "v1.1.1,v2.0.2,v2.1.0-alpha.2,v1.1.1,v0.90.0,v1.1.1,v1.1.1,v1.2.2",
+			recommended: []string{"v1.1.1", "v2.0.2", "v2.1.0-alpha.2", "v1.1.1", "v0.90.0", "v1.1.1", "v1.1.1", "v1.2.2"},
 			expected:    []string{"v2.1.0-alpha.2", "v2.0.2", "v1.2.2", "v1.1.1", "v0.90.0"},
 		},
 	}

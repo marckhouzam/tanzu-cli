@@ -38,8 +38,8 @@ var _ = framework.CLICoreDescribe("[Tests:E2E][Feature:Recommended-version]", fu
 	)
 	var (
 		tf                       *framework.Framework
-		recommendedOlderVersions = olderVersion + ",v0.8.8"
-		recommendedNewerVersions = "1.8.8," + newerVersion
+		recommendedOlderVersions = []string{olderVersion, "v0.8.8"}
+		recommendedNewerVersions = []string{"1.8.8", newerVersion}
 	)
 	BeforeEach(func() {
 		tf = framework.NewFramework()
@@ -110,7 +110,7 @@ var _ = framework.CLICoreDescribe("[Tests:E2E][Feature:Recommended-version]", fu
 	})
 })
 
-func updateRecommendedVersions(recommended string) {
+func updateRecommendedVersions(recommended []string) {
 	testCentralConfigFile := filepath.Join(framework.TestHomeDir, ".cache", "tanzu", common.PluginInventoryDirName, "default", "central_config.yaml")
 
 	// Read the central config file so we can update it with the new recommended version string
