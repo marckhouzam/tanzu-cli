@@ -51,7 +51,12 @@ func CheckRecommendedCLIVersion(cmd *cobra.Command) {
 	// Get the recommended versions from the central configuration
 	reader := centralconfig.NewCentralConfigReader(discoverySource)
 	recommendedVersionValue, err := reader.GetCentralConfigEntry(centralConfigRecommendedVersionsKey)
-	if err != nil || recommendedVersionValue == nil {
+	if err != nil {
+		log.V(7).Error(err, "error reading recommended versions from central config")
+		return
+	}
+	if recommendedVersionValue == nil {
+		log.V(7).Error(err, "missing key for recommended versions in central config")
 		return
 	}
 

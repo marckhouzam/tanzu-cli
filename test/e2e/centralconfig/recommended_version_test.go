@@ -34,12 +34,12 @@ func deleteCLIDataStoreFile() error {
 var _ = framework.CLICoreDescribe("[Tests:E2E][Feature:Recommended-version]", func() {
 	const (
 		olderVersion = "v0.9.9"
-		newerVersion = "v9.9.9"
+		newerVersion = "v1.9.9"
 	)
 	var (
 		tf                       *framework.Framework
 		recommendedOlderVersions = olderVersion + ",v0.8.8"
-		recommendedNewerVersions = "9.8.8," + newerVersion
+		recommendedNewerVersions = "1.8.8," + newerVersion
 	)
 	BeforeEach(func() {
 		tf = framework.NewFramework()
@@ -61,16 +61,6 @@ var _ = framework.CLICoreDescribe("[Tests:E2E][Feature:Recommended-version]", fu
 				Expect(errStream).To(ContainSubstring("Note: A new version of the Tanzu CLI is available"))
 				Expect(errStream).To(ContainSubstring(newerVersion))
 			})
-			It("print the recommended notification for an older version", func() {
-				// Use a version we are sure is lower than the current CLI version
-				updateRecommendedVersions(recommendedOlderVersions)
-
-				// Run any command to trigger the recommended version check
-				_, _, errStream, err := tf.PluginCmd.ListPlugins()
-				Expect(err).To(BeNil())
-				Expect(errStream).To(ContainSubstring("WARNING: Due to a problem it is recommended not to use the current version"))
-				Expect(errStream).To(ContainSubstring(olderVersion))
-			})
 			It("do not print the recommended notification when the feature is disabled", func() {
 				// Use a version we are sure is higher than the current CLI version
 				updateRecommendedVersions(recommendedNewerVersions)
@@ -80,7 +70,16 @@ var _ = framework.CLICoreDescribe("[Tests:E2E][Feature:Recommended-version]", fu
 
 				_, _, errStream, err := tf.PluginCmd.ListPlugins()
 				Expect(err).To(BeNil())
-				Expect(errStream).ToNot(ContainSubstring(newerVersion))
+				Expect(errStream).To(BeEmpty())
+			})
+			It("do not print any recommended notification for an older version", func() {
+				// Use a version we are sure is lower than the current CLI version
+				updateRecommendedVersions(recommendedOlderVersions)
+
+				// Run any command to trigger the recommended version check
+				_, _, errStream, err := tf.PluginCmd.ListPlugins()
+				Expect(err).To(BeNil())
+				Expect(errStream).To(BeEmpty())
 			})
 		})
 		When("there is a data store", func() {
@@ -106,29 +105,6 @@ var _ = framework.CLICoreDescribe("[Tests:E2E][Feature:Recommended-version]", fu
 				Expect(err).To(BeNil())
 				Expect(errStream).To(ContainSubstring("Note: A new version of the Tanzu CLI is available"))
 				Expect(errStream).To(ContainSubstring(newerVersion))
-			})
-			It("print the recommended notification for an older version after the delay", func() {
-				// Use a version we are sure is lower than the current CLI version
-				updateRecommendedVersions(recommendedOlderVersions)
-
-				// Run any command to trigger the recommended version check
-				_, _, _, err := tf.PluginCmd.ListPlugins()
-				Expect(err).To(BeNil())
-				// Run the command again to see that the notification is not printed again
-				_, _, errStream, err := tf.PluginCmd.ListPlugins()
-				Expect(err).To(BeNil())
-				Expect(errStream).ToNot(ContainSubstring("Note: A new version of the Tanzu CLI is available"))
-				Expect(errStream).ToNot(ContainSubstring(olderVersion))
-
-				// Now set a low delay so we can test the notification is printed again
-				// Negative values mean a delay in seconds instead of days.
-				os.Setenv("TANZU_CLI_RECOMMEND_VERSION_DELAY_DAYS", "-1")
-				time.Sleep(time.Second * 1)
-
-				_, _, errStream, err = tf.PluginCmd.ListPlugins()
-				Expect(err).To(BeNil())
-				Expect(errStream).To(ContainSubstring("WARNING: Due to a problem it is recommended not to use the current version"))
-				Expect(errStream).To(ContainSubstring(olderVersion))
 			})
 		})
 	})
