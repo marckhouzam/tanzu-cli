@@ -90,6 +90,13 @@ func findRecommendedMajorVersion(recommendedVersions []string, currentVersion st
 		if utils.IsSameMajor(newVersion, currentVersion) {
 			return ""
 		}
+
+		// If it is not a newer version than the current version
+		// then there is no recommendation to give
+		if !utils.IsNewVersion(newVersion, currentVersion) {
+			return ""
+		}
+
 		return newVersion
 	}
 	return ""
@@ -115,6 +122,12 @@ func findRecommendedMinorVersion(recommendedVersions []string, currentVersion st
 			if utils.IsSameMinor(newVersion, currentVersion) {
 				return ""
 			}
+			// If it is not a newer version than the current version
+			// then there is no recommendation to give
+			if !utils.IsNewVersion(newVersion, currentVersion) {
+				return ""
+			}
+
 			return newVersion
 		}
 	}
@@ -135,12 +148,12 @@ func findRecommendedPatchVersion(recommendedVersions []string, currentVersion st
 		// the first version that is the same minor version as the current version
 		// will be the most recent patch to recommend.
 		if utils.IsSameMinor(newVersion, currentVersion) {
-			// This is the most recent of version within the same minor version.
-			// If it is the same as the current version, then the current version
-			// is already the correct patch version
-			if newVersion == currentVersion {
+			// If it is not a newer version than the current version
+			// then there is no recommendation to give
+			if !utils.IsNewVersion(newVersion, currentVersion) {
 				return ""
 			}
+
 			return newVersion
 		}
 	}
@@ -220,7 +233,9 @@ func shouldCheckVersion() bool {
 }
 
 func printVersionRecommendations(writer io.Writer, currentVersion, major, minor, patch string) {
-	if major == "" && minor == "" && patch == "" {
+	if (major == "" || !utils.IsNewVersion(major, currentVersion)) &&
+		(minor == "" || !utils.IsNewVersion(minor, currentVersion)) &&
+		(patch == "" || !utils.IsNewVersion(patch, currentVersion)) {
 		// The current version is the best recommended version
 		return
 	}
@@ -228,40 +243,32 @@ func printVersionRecommendations(writer io.Writer, currentVersion, major, minor,
 	// Put a delimiter before this notification so the user
 	// can see it is not part of the command output
 	fmt.Fprintln(writer, "\n==")
-
-	if utils.IsNewVersion(currentVersion, major) || utils.IsNewVersion(currentVersion, minor) || utils.IsNewVersion(currentVersion, patch) {
-		fmt.Fprintf(writer, "WARNING: Due to a problem it is recommended not to use the current version: %s.\n", currentVersion)
-		fmt.Fprintln(writer, "Please use a recommended version:")
-	} else {
-		fmt.Fprintf(writer, "Note: A new version of the Tanzu CLI is available. You are at version: %s.\n", currentVersion)
-		fmt.Fprintln(writer, "To benefit from the latest security and features, please update to a recommended version:")
-	}
+	fmt.Fprintf(writer, "Note: A new version of the Tanzu CLI is available. You are at version: %s.\n", currentVersion)
+	fmt.Fprintln(writer, "To benefit from the latest security and features, please update to a recommended version:")
 
 	if major != "" {
+		// Only print the major version if it is a new version
 		if utils.IsNewVersion(major, currentVersion) {
 			fmt.Fprintf(writer, "  - %s\n", major)
-		} else {
-			fmt.Fprintf(writer, "  - %s ([!] you should downgrade to a previous major version)\n", major)
 		}
 	}
 	if minor != "" {
+		// Only print the recommended version if it is a newer version
 		if utils.IsNewVersion(minor, currentVersion) {
 			fmt.Fprintf(writer, "  - %s\n", minor)
-		} else {
-			fmt.Fprintf(writer, "  - %s ([!] you should downgrade to a previous minor version)\n", minor)
 		}
 	}
 	if patch != "" {
+		// Only print the recommended version if it is a newer version
 		if utils.IsNewVersion(patch, currentVersion) {
 			fmt.Fprintf(writer, "  - %s\n", patch)
-		} else {
-			fmt.Fprintf(writer, "  - %s ([!] you should downgrade to a previous patch version)\n", patch)
 		}
 	}
 
 	delay := getRecommendationDelayInSeconds()
 	var delayStr string
 	if delay >= 60*60 {
+		// If the delay is more than an hour, show the delay in hours
 		delayStr = fmt.Sprintf("%d hours", delay/60/60)
 	} else {
 		delayStr = fmt.Sprintf("%d seconds", delay)

@@ -37,22 +37,40 @@ func TestFindRecommendedMajorVersion(t *testing.T) {
 			expected:    "v2.0.2",
 		},
 		{
-			name:        "Same major",
+			name:        "Same exact version",
+			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
+			current:     "v2.0.2",
+			expected:    "",
+		},
+		{
+			name:        "Same major but newer patch",
 			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
 			current:     "v2.0.0",
+			expected:    "",
+		},
+		{
+			name:        "Same major but older minor",
+			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
+			current:     "v2.2.0",
 			expected:    "",
 		},
 		{
 			name:        "Older major",
 			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
 			current:     "v3.3.3",
-			expected:    "v2.0.2",
+			expected:    "",
 		},
 		{
-			name:        "Pre-release",
+			name:        "Newer pre-release",
 			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
 			current:     "v1.0.2-rc.0",
 			expected:    "v2.1.0-alpha.2",
+		},
+		{
+			name:        "Older pre-release",
+			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
+			current:     "v3.0.2-rc.0",
+			expected:    "",
 		},
 	}
 
@@ -61,7 +79,7 @@ func TestFindRecommendedMajorVersion(t *testing.T) {
 			includePreReleases := utils.IsPreRelease(tt.current)
 
 			if got := findRecommendedMajorVersion(tt.recommended, tt.current, includePreReleases); got != tt.expected {
-				t.Errorf("FindRecommendedMajorVersion() = %v, want %v", got, tt.expected)
+				t.Errorf("findRecommendedMajorVersion() = %v, want %v", got, tt.expected)
 			}
 		})
 	}
@@ -89,6 +107,12 @@ func TestFindRecommendedMinorVersion(t *testing.T) {
 		{
 			name:        "Same minor",
 			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
+			current:     "v1.4.2",
+			expected:    "",
+		},
+		{
+			name:        "Same exact version",
+			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
 			current:     "v1.4.4",
 			expected:    "",
 		},
@@ -96,13 +120,25 @@ func TestFindRecommendedMinorVersion(t *testing.T) {
 			name:        "Older minor",
 			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
 			current:     "v2.1.0",
-			expected:    "v2.0.2",
+			expected:    "",
 		},
 		{
-			name:        "Pre-release",
+			name:        "Same minor but older patch",
+			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
+			current:     "v2.0.4",
+			expected:    "",
+		},
+		{
+			name:        "Newer pre-release",
 			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
 			current:     "v1.0.2-rc.0",
 			expected:    "v1.5.0-beta.0",
+		},
+		{
+			name:        "Older pre-release",
+			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
+			current:     "v1.5.2-rc.0",
+			expected:    "",
 		},
 	}
 
@@ -111,7 +147,7 @@ func TestFindRecommendedMinorVersion(t *testing.T) {
 			includePreReleases := utils.IsPreRelease(tt.current)
 
 			if got := findRecommendedMinorVersion(tt.recommended, tt.current, includePreReleases); got != tt.expected {
-				t.Errorf("FindRecommendedMinorVersion() = %v, want %v", got, tt.expected)
+				t.Errorf("findRecommendedMinorVersion() = %v, want %v", got, tt.expected)
 			}
 		})
 	}
@@ -146,13 +182,19 @@ func TestFindRecommendedPatchVersion(t *testing.T) {
 			name:        "Older patch",
 			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
 			current:     "v1.3.4",
-			expected:    "v1.3.3",
+			expected:    "",
 		},
 		{
-			name:        "Pre-release",
+			name:        "Newer pre-release",
 			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
 			current:     "v1.5.0-alpha.1",
 			expected:    "v1.5.0-beta.0",
+		},
+		{
+			name:        "Older pre-release",
+			recommended: strings.Split("v2.1.0-alpha.2,v2.0.2,v1.5.0-beta.0,v1.4.4,,v1.3.3,v1.2.2,v1.1.1,v0.90.0", ","),
+			current:     "v1.5.0-beta.8",
+			expected:    "",
 		},
 	}
 
@@ -161,7 +203,7 @@ func TestFindRecommendedPatchVersion(t *testing.T) {
 			includePreReleases := utils.IsPreRelease(tt.current)
 
 			if got := findRecommendedPatchVersion(tt.recommended, tt.current, includePreReleases); got != tt.expected {
-				t.Errorf("FindRecommendedPatchVersion() = %v, want %v", got, tt.expected)
+				t.Errorf("findRecommendedPatchVersion() = %v, want %v", got, tt.expected)
 			}
 		})
 	}
@@ -206,15 +248,15 @@ func TestSortRecommendedVersionsDescending(t *testing.T) {
 			got, err := sortRecommendedVersionsDescending(tt.recommended)
 			if tt.expectedErr != "" {
 				if err == nil {
-					t.Errorf("SortRecommendedVersionsDescending() should have returned an error")
+					t.Errorf("sortRecommendedVersionsDescending() should have returned an error")
 				} else {
 					if err.Error() != tt.expectedErr {
-						t.Errorf("SortRecommendedVersionsDescending() error = %v, want %v", err.Error(), tt.expectedErr)
+						t.Errorf("sortRecommendedVersionsDescending() error = %v, want %v", err.Error(), tt.expectedErr)
 					}
 				}
 			} else {
 				if !arraysAreEqual(got, tt.expected) {
-					t.Errorf("SortRecommendedVersionsDescending() = %v, want %v", got, tt.expected)
+					t.Errorf("sortRecommendedVersionsDescending() = %v, want %v", got, tt.expected)
 				}
 			}
 		})
@@ -406,19 +448,19 @@ func TestPrintVersionRecommendations(t *testing.T) {
 			name:             "Recommend older patch",
 			currentVersion:   "v1.3.9",
 			recommendedPatch: "v1.3.3",
-			contains:         []string{"WARNING:", "v1.3.3"},
+			contains:         []string{},
 		},
 		{
 			name:             "Recommend older minor",
 			currentVersion:   "v1.9.0",
 			recommendedMinor: "v1.4.3",
-			contains:         []string{"WARNING:", "v1.4.3"},
+			contains:         []string{},
 		},
 		{
 			name:             "Recommend older major",
 			currentVersion:   "v9.3.0",
 			recommendedMajor: "v2.4.3",
-			contains:         []string{"WARNING:", "v2.4.3"},
+			contains:         []string{},
 		},
 		{
 			name:             "With newer pre-release",
@@ -429,12 +471,12 @@ func TestPrintVersionRecommendations(t *testing.T) {
 			contains:         []string{"Note:", "v2.4.3-rc.0", "v1.4.3-alpha.0", "v1.3.0-beta.0"},
 		},
 		{
-			name:             "Downgrade pre-release",
-			currentVersion:   "v1.3.0-alpha.1",
-			recommendedMajor: "v2.4.3-rc.0",
+			name:             "With older pre-release",
+			currentVersion:   "v2.4.3-rc.1",
+			recommendedMajor: "v2.4.3-alpha.0",
 			recommendedMinor: "v1.4.3-alpha.0",
 			recommendedPatch: "v1.3.0-alpha.0",
-			contains:         []string{"WARNING:", "v2.4.3-rc.0", "v1.4.3-alpha.0", "v1.3.0-alpha.0"},
+			contains:         []string{},
 		},
 	}
 
