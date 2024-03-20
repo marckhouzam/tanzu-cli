@@ -76,7 +76,7 @@ var _ = framework.CLICoreDescribe("[Tests:E2E][Feature:Recommended-version]", fu
 				updateRecommendedVersions(recommendedNewerVersions)
 
 				// Set a 0 delay to disable the feature
-				os.Setenv("TANZU_CLI_RECOMMEND_VERSION_DELAY_SECONDS", "0")
+				os.Setenv("TANZU_CLI_RECOMMEND_VERSION_DELAY_DAYS", "0")
 
 				_, _, errStream, err := tf.PluginCmd.ListPlugins()
 				Expect(err).To(BeNil())
@@ -97,8 +97,9 @@ var _ = framework.CLICoreDescribe("[Tests:E2E][Feature:Recommended-version]", fu
 				Expect(errStream).ToNot(ContainSubstring("Note: A new version of the Tanzu CLI is available"))
 				Expect(errStream).ToNot(ContainSubstring(newerVersion))
 
-				// Now set a low delay so we can test the notification is printed again
-				os.Setenv("TANZU_CLI_RECOMMEND_VERSION_DELAY_SECONDS", "1")
+				// Now set a low delay so we can test the notification is printed again.
+				// Negative values mean a delay in seconds instead of days.
+				os.Setenv("TANZU_CLI_RECOMMEND_VERSION_DELAY_DAYS", "-1")
 				time.Sleep(time.Second * 1)
 
 				_, _, errStream, err = tf.PluginCmd.ListPlugins()
@@ -120,7 +121,8 @@ var _ = framework.CLICoreDescribe("[Tests:E2E][Feature:Recommended-version]", fu
 				Expect(errStream).ToNot(ContainSubstring(olderVersion))
 
 				// Now set a low delay so we can test the notification is printed again
-				os.Setenv("TANZU_CLI_RECOMMEND_VERSION_DELAY_SECONDS", "1")
+				// Negative values mean a delay in seconds instead of days.
+				os.Setenv("TANZU_CLI_RECOMMEND_VERSION_DELAY_DAYS", "-1")
 				time.Sleep(time.Second * 1)
 
 				_, _, errStream, err = tf.PluginCmd.ListPlugins()

@@ -6,7 +6,6 @@ package recommendedversion
 import (
 	"bytes"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -231,17 +230,12 @@ func TestGetRecommendationDelayValue(t *testing.T) {
 		{
 			name:          "No override",
 			delayOverride: "",
-			want:          24 * 60 * 60, // 24 hours
-		},
-		{
-			name:          "With smaller override",
-			delayOverride: "36",
-			want:          36,
+			want:          24 * 60 * 60, // 24 hours in seconds
 		},
 		{
 			name:          "With larger override",
-			delayOverride: strconv.Itoa(24*60*60 + 100),
-			want:          24*60*60 + 100,
+			delayOverride: "7",              // 7 days
+			want:          7 * 24 * 60 * 60, // 7 days in seconds
 		},
 		{
 			name:          "With 0 override",
@@ -249,21 +243,21 @@ func TestGetRecommendationDelayValue(t *testing.T) {
 			want:          0,
 		},
 		{
-			name:          "With negative override",
-			delayOverride: "-100",
-			want:          24 * 60 * 60, // 24 hours
+			name:          "With negative override (used for testing)",
+			delayOverride: "-60", // 60 seconds
+			want:          60,    // 60 seconds
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.delayOverride != "" {
-				_ = os.Setenv(constants.ConfigVariableRecommendVersionDelay, tt.delayOverride)
+				_ = os.Setenv(constants.ConfigVariableRecommendVersionDelayDays, tt.delayOverride)
 				defer func() {
-					_ = os.Setenv(constants.ConfigVariableRecommendVersionDelay, "")
+					_ = os.Setenv(constants.ConfigVariableRecommendVersionDelayDays, "")
 				}()
 			}
-			delay := getRecommendationDelayValue()
+			delay := getRecommendationDelayInSeconds()
 			if delay != tt.want {
 				t.Errorf("getRecommendationDelayValue() = %v, want %v", delay, tt.want)
 			}
@@ -307,13 +301,13 @@ func TestShouldCheckVersion(t *testing.T) {
 		{
 			name:          "Shorten delay, don't check",
 			delayOverride: "5",
-			lastCheckTime: time.Now().Add(-2 * time.Second),
+			lastCheckTime: time.Now().Add(-2 * time.Hour * 24),
 			want:          false,
 		},
 		{
 			name:          "Shorten delay, do check",
 			delayOverride: "5",
-			lastCheckTime: time.Now().Add(-6 * time.Second),
+			lastCheckTime: time.Now().Add(-6 * time.Hour * 24),
 			want:          true,
 		},
 	}
@@ -331,9 +325,9 @@ func TestShouldCheckVersion(t *testing.T) {
 			}
 
 			if tt.delayOverride != "" {
-				_ = os.Setenv(constants.ConfigVariableRecommendVersionDelay, tt.delayOverride)
+				_ = os.Setenv(constants.ConfigVariableRecommendVersionDelayDays, tt.delayOverride)
 				defer func() {
-					_ = os.Setenv(constants.ConfigVariableRecommendVersionDelay, "")
+					_ = os.Setenv(constants.ConfigVariableRecommendVersionDelayDays, "")
 				}()
 			}
 
@@ -461,7 +455,7 @@ func TestPrintVersionRecommendations(t *testing.T) {
 					assert.Contains(buf.String(), tt.contains[i])
 				}
 				// Check that the variable to override is mentioned
-				assert.Contains(buf.String(), constants.ConfigVariableRecommendVersionDelay)
+				assert.Contains(buf.String(), constants.ConfigVariableRecommendVersionDelayDays)
 			}
 
 			// Check that the timestamp is updated

@@ -179,20 +179,27 @@ func sortRecommendedVersionsDescending(recommendedVersionStr string) ([]string, 
 	return recommendedVersions, err
 }
 
-func getRecommendationDelayValue() int {
+func getRecommendationDelayInSeconds() int {
 	delay := recommendedVersionCheckDelaySeconds
-	delayOverride := os.Getenv(constants.ConfigVariableRecommendVersionDelay)
+	delayOverride := os.Getenv(constants.ConfigVariableRecommendVersionDelayDays)
 	if delayOverride != "" {
 		delayOverrideValue, err := strconv.Atoi(delayOverride)
-		if err == nil && delayOverrideValue >= 0 {
-			delay = delayOverrideValue
+		if err == nil {
+			if delayOverrideValue >= 0 {
+				// Convert from days to seconds
+				delay = delayOverrideValue * 24 * 60 * 60
+			} else {
+				// When the configured delay is negative, it means the value
+				// should be in seconds.  This is used for testing purposes.
+				delay = -delayOverrideValue
+			}
 		}
 	}
 	return delay
 }
 
 func shouldCheckVersion() bool {
-	delay := getRecommendationDelayValue()
+	delay := getRecommendationDelayInSeconds()
 	if delay == 0 {
 		// The user has disabled the version check
 		return false
@@ -252,9 +259,16 @@ func printVersionRecommendations(writer io.Writer, currentVersion, major, minor,
 		}
 	}
 
-	fmt.Fprintf(writer, "\nThis message will print at most once per %d hours until you update the CLI.\n"+
+	delay := getRecommendationDelayInSeconds()
+	var delayStr string
+	if delay >= 60*60 {
+		delayStr = fmt.Sprintf("%d hours", delay/60/60)
+	} else {
+		delayStr = fmt.Sprintf("%d seconds", delay)
+	}
+	fmt.Fprintf(writer, "\nThis message will print at most once per %s until you update the CLI.\n"+
 		"Set %s to adjust this period (0 to disable).\n",
-		recommendedVersionCheckDelaySeconds/60/60, constants.ConfigVariableRecommendVersionDelay)
+		delayStr, constants.ConfigVariableRecommendVersionDelayDays)
 
 	// Now that we printed the message to the use, save the time of the last check
 	// so that we don't continually print the message at every command
