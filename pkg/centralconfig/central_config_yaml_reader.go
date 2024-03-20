@@ -8,8 +8,6 @@ import (
 	"os"
 
 	"gopkg.in/yaml.v3"
-
-	"github.com/vmware-tanzu/tanzu-plugin-runtime/log"
 )
 
 type centralConfigYamlReader struct {
@@ -23,7 +21,7 @@ var _ CentralConfig = &centralConfigYamlReader{}
 // parseConfigFile reads the central config file and returns the parsed yaml content.
 // If the file does not exist, it does not return an error because some central repositories
 // may choose not to have a central config file.
-func (c *centralConfigYamlReader) parseConfigFile() (map[string]interface{}, error) {
+func (c *centralConfigYamlReader) parseConfigFile() (map[CentralConfigKey]CentralConfigValue, error) {
 	// Check if the central config file exists.
 	if _, err := os.Stat(c.configFile); os.IsNotExist(err) {
 		// The central config file is optional, don't return an error if it does not exist.
@@ -35,7 +33,7 @@ func (c *centralConfigYamlReader) parseConfigFile() (map[string]interface{}, err
 		return nil, err
 	}
 
-	var content map[string]interface{}
+	var content map[CentralConfigKey]CentralConfigValue
 	err = yaml.Unmarshal(bytes, &content)
 	if err != nil {
 		return nil, err
@@ -43,16 +41,15 @@ func (c *centralConfigYamlReader) parseConfigFile() (map[string]interface{}, err
 	return content, nil
 }
 
-func (c *centralConfigYamlReader) GetCentralConfigEntry(key CentralConfigEntryKey) *CentralConfigEntryValue {
+func (c *centralConfigYamlReader) GetCentralConfigEntry(key CentralConfigKey) (CentralConfigValue, error) {
 	values, err := c.parseConfigFile()
 	if err != nil {
-		log.V(6).Warningf("error while reading central config file: %v", err)
-		return nil
+		return nil, err
 	}
 
-	value, isKeySet := values[key.Key]
+	value, isKeySet := values[key]
 	if !isKeySet {
-		return nil
+		return nil, nil
 	}
-	return &CentralConfigEntryValue{Value: value}
+	return value, nil
 }

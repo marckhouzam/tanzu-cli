@@ -23,11 +23,12 @@ func TestGetCentralConfigEntry(t *testing.T) {
 	assert.Nil(t, err)
 
 	tcs := []struct {
-		name       string
-		cfgContent string
-		nofile     bool
-		key        string
-		expected   interface{}
+		name        string
+		cfgContent  string
+		nofile      bool
+		key         CentralConfigKey
+		expected    CentralConfigValue
+		expectError bool
 	}{
 		{
 			name:     "No file for central config",
@@ -45,44 +46,44 @@ func TestGetCentralConfigEntry(t *testing.T) {
 			name:       "String value",
 			cfgContent: "testKey: testValue",
 			key:        "testKey",
-			expected:   CentralConfigEntryValue{Value: "testValue"},
+			expected:   "testValue",
 		},
 		{
 			name:       "Boolean true value",
 			cfgContent: "testKey: true",
 			key:        "testKey",
-			expected:   CentralConfigEntryValue{Value: true},
+			expected:   true,
 		},
 		{
 			name:       "Boolean TRUE value",
 			cfgContent: "testKey: TRUE",
 			key:        "testKey",
-			expected:   CentralConfigEntryValue{Value: true},
+			expected:   true,
 		},
 		{
 			name:       "Boolean FALSE value",
 			cfgContent: "testKey: FALSE",
 			key:        "testKey",
-			expected:   CentralConfigEntryValue{Value: false},
+			expected:   false,
 		},
 		{
 			name:       "Boolean int value",
 			cfgContent: "testKey: 1",
 			key:        "testKey",
-			expected:   CentralConfigEntryValue{Value: 1},
+			expected:   1,
 		},
 		{
 			name:       "Timestamp value",
 			cfgContent: "testKey: " + timestampStr,
 			key:        "testKey",
-			expected:   CentralConfigEntryValue{Value: timestamp},
+			expected:   timestamp,
 		},
 		{
 			name: "Complex map value",
 			cfgContent: `testKey:
   testSubKey: testValue`,
 			key:      "testKey",
-			expected: CentralConfigEntryValue{Value: map[string]interface{}{"testSubKey": "testValue"}},
+			expected: map[string]interface{}{"testSubKey": "testValue"},
 		},
 		{
 			name: "More map of array value",
@@ -91,7 +92,7 @@ func TestGetCentralConfigEntry(t *testing.T) {
   - testValue1
   - testValue2`,
 			key:      "testKey",
-			expected: CentralConfigEntryValue{Value: map[string]interface{}{"testSubKey": []interface{}{"testValue1", "testValue2"}}},
+			expected: map[string]interface{}{"testSubKey": []interface{}{"testValue1", "testValue2"}},
 		},
 		{
 			name: "Missing key",
@@ -115,14 +116,14 @@ func TestGetCentralConfigEntry(t *testing.T) {
 			name:       "Empty value",
 			cfgContent: "testKey: ",
 			key:        "testKey",
-			expected:   CentralConfigEntryValue{Value: interface{}(nil)},
+			expected:   interface{}(nil),
 		},
 		{
 			name: "Invalid yaml",
 			cfgContent: `testKey: testValue
 - invalid`,
-			key:      "testKey",
-			expected: nil,
+			key:         "testKey",
+			expectError: true,
 		},
 	}
 
@@ -152,11 +153,16 @@ func TestGetCentralConfigEntry(t *testing.T) {
 				assert.Nil(t, err)
 			}
 
-			value := reader.GetCentralConfigEntry(CentralConfigEntryKey{Key: tc.key})
+			value, err := reader.GetCentralConfigEntry(tc.key)
+			if tc.expectError {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+			}
 			if tc.expected == nil {
 				assert.Nil(t, value)
 			} else {
-				assert.Equal(t, tc.expected, *value)
+				assert.Equal(t, tc.expected, value)
 			}
 		})
 	}

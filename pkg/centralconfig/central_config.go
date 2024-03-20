@@ -14,19 +14,15 @@ import (
 // CentralConfigFileName is the name of the central config file
 const CentralConfigFileName = "central_config.yaml"
 
-// CentralConfigEntryKey represents the key of a central configuration entry.
-type CentralConfigEntryKey struct {
-	Key string
-}
+// CentralConfigKey represents the key of a central configuration entry.
+type CentralConfigKey string
 
-// CentralConfigEntryValue represents the value of a central configuration entry.
-type CentralConfigEntryValue struct {
-	Value interface{}
-}
+// CentralConfigValue represents the value of a central configuration entry.
+type CentralConfigValue interface{}
 
 // CentralConfig is used to interact with the central configuration.
 type CentralConfig interface {
-	GetCentralConfigEntry(key CentralConfigEntryKey) *CentralConfigEntryValue
+	GetCentralConfigEntry(key CentralConfigKey) (CentralConfigValue, error)
 }
 
 // NewCentralConfigReader returns a CentralConfig reader that can

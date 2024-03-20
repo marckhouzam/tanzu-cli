@@ -61,7 +61,7 @@ func TestFindRecommendedMajorVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			includePreReleases := utils.IsPreRelease(tt.current)
 
-			if got := FindRecommendedMajorVersion(tt.recommended, tt.current, includePreReleases); got != tt.expected {
+			if got := findRecommendedMajorVersion(tt.recommended, tt.current, includePreReleases); got != tt.expected {
 				t.Errorf("FindRecommendedMajorVersion() = %v, want %v", got, tt.expected)
 			}
 		})
@@ -111,7 +111,7 @@ func TestFindRecommendedMinorVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			includePreReleases := utils.IsPreRelease(tt.current)
 
-			if got := FindRecommendedMinorVersion(tt.recommended, tt.current, includePreReleases); got != tt.expected {
+			if got := findRecommendedMinorVersion(tt.recommended, tt.current, includePreReleases); got != tt.expected {
 				t.Errorf("FindRecommendedMinorVersion() = %v, want %v", got, tt.expected)
 			}
 		})
@@ -161,7 +161,7 @@ func TestFindRecommendedPatchVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			includePreReleases := utils.IsPreRelease(tt.current)
 
-			if got := FindRecommendedPatchVersion(tt.recommended, tt.current, includePreReleases); got != tt.expected {
+			if got := findRecommendedPatchVersion(tt.recommended, tt.current, includePreReleases); got != tt.expected {
 				t.Errorf("FindRecommendedPatchVersion() = %v, want %v", got, tt.expected)
 			}
 		})
@@ -204,7 +204,7 @@ func TestSortRecommendedVersionsDescending(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := SortRecommendedVersionsDescending(tt.recommended)
+			got, err := sortRecommendedVersionsDescending(tt.recommended)
 			if tt.expectedErr != "" {
 				if err == nil {
 					t.Errorf("SortRecommendedVersionsDescending() should have returned an error")
@@ -465,7 +465,8 @@ func TestPrintVersionRecommendations(t *testing.T) {
 			}
 
 			// Check that the timestamp is updated
-			timestamp := datastore.GetDataStoreValue(dataStoreLastVersionCheckKey)
+			timestamp, err := datastore.GetDataStoreValue(dataStoreLastVersionCheckKey)
+			assert.Nil(err)
 			if tt.timestampNotSet {
 				assert.Nil(timestamp)
 			} else {

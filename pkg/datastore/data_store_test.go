@@ -151,7 +151,8 @@ func TestGetDataStoreValue(t *testing.T) {
 				}
 			}
 
-			value := GetDataStoreValue(tc.key)
+			value, err := GetDataStoreValue(tc.key)
+			assert.Nil(t, err)
 			assert.Equal(t, tc.expected, value)
 		})
 	}
@@ -279,7 +280,8 @@ func TestSetDataStoreValue(t *testing.T) {
 			err = SetDataStoreValue(tc.key, tc.value)
 			assert.Nil(t, err)
 
-			value := GetDataStoreValue(tc.key)
+			value, err := GetDataStoreValue(tc.key)
+			assert.Nil(t, err)
 			assert.Equal(t, tc.expected, value)
 		})
 	}
@@ -293,30 +295,31 @@ func TestDeleteDataStoreValue(t *testing.T) {
 	assert.Nil(t, err)
 
 	tcs := []struct {
-		name      string
-		dsContent string
-		nofile    bool
-		nodir     bool
-		key       DataStoreKey
-		expected  DataStoreValue
+		name        string
+		dsContent   string
+		nofile      bool
+		nodir       bool
+		key         DataStoreKey
+		expected    DataStoreValue
+		expectError bool
 	}{
 		{
-			name:     "No directory for data store",
-			nodir:    true,
-			key:      "testKey",
-			expected: nil,
+			name:        "No directory for data store",
+			nodir:       true,
+			key:         "testKey",
+			expectError: true,
 		},
 		{
-			name:     "No file for data store",
-			nofile:   true,
-			key:      "testKey",
-			expected: nil,
+			name:        "No file for data store",
+			nofile:      true,
+			key:         "testKey",
+			expectError: true,
 		},
 		{
-			name:      "Empty data store",
-			dsContent: "",
-			key:       "testKey",
-			expected:  nil,
+			name:        "Empty data store",
+			dsContent:   "",
+			key:         "testKey",
+			expectError: true,
 		},
 		{
 			name:      "String value",
@@ -376,8 +379,8 @@ func TestDeleteDataStoreValue(t *testing.T) {
   testSubKey:
   - testValue1
   - testValue2`,
-			key:      "invalidKey",
-			expected: nil,
+			key:         "invalidKey",
+			expectError: true,
 		},
 		{
 			name: "Empty key",
@@ -385,8 +388,8 @@ func TestDeleteDataStoreValue(t *testing.T) {
   testSubKey:
   - testValue1
   - testValue2`,
-			key:      "",
-			expected: nil,
+			key:         "",
+			expectError: true,
 		},
 		{
 			name:      "Empty value",
@@ -425,11 +428,17 @@ func TestDeleteDataStoreValue(t *testing.T) {
 			}
 
 			value, err := DeleteDataStoreValue(tc.key)
-			assert.Nil(t, err)
-			assert.Equal(t, tc.expected, value)
+			if tc.expectError {
+				assert.NotNil(t, err)
+				assert.Nil(t, value)
+			} else {
+				assert.Nil(t, err)
+				assert.Equal(t, tc.expected, value)
+			}
 
 			// Make sure the key is deleted
-			value = GetDataStoreValue(tc.key)
+			value, err = GetDataStoreValue(tc.key)
+			assert.Nil(t, err)
 			assert.Nil(t, value)
 		})
 	}

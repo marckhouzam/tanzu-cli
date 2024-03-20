@@ -31,13 +31,13 @@ type DataStoreKey string
 type dataStoreContent map[DataStoreKey]DataStoreValue
 
 // GetDataStoreValue retrieves the value of the key from the data store.
-func GetDataStoreValue(key DataStoreKey) DataStoreValue {
+func GetDataStoreValue(key DataStoreKey) (DataStoreValue, error) {
 	content, err := getDataStoreContent(false)
 	if err != nil || content == nil {
-		return nil
+		return nil, err
 	}
 
-	return content[key]
+	return content[key], nil
 }
 
 // SetDataStoreValue sets the value of the key in the data store.
@@ -63,7 +63,12 @@ func DeleteDataStoreValue(key DataStoreKey) (DataStoreValue, error) {
 		return nil, err
 	}
 
-	deletedValue := content[key]
+	deletedValue, present := content[key]
+	if !present {
+		_ = saveAndClose(content)
+		return nil, errors.New("key not found in data store")
+	}
+
 	delete(content, key)
 
 	err = saveAndClose(content)

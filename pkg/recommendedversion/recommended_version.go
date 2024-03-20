@@ -50,18 +50,17 @@ func CheckRecommendedCLIVersion(cmd *cobra.Command) {
 
 	// Get the recommended versions from the central configuration
 	reader := centralconfig.NewCentralConfigReader(discoverySource)
-	recommendedVersionValue := reader.GetCentralConfigEntry(
-		centralconfig.CentralConfigEntryKey{Key: centralConfigRecommendedVersionsKey})
-	if recommendedVersionValue == nil {
+	recommendedVersionValue, err := reader.GetCentralConfigEntry(centralConfigRecommendedVersionsKey)
+	if err != nil || recommendedVersionValue == nil {
 		return
 	}
 
-	value, ok := recommendedVersionValue.Value.(string)
+	value, ok := recommendedVersionValue.(string)
 	if !ok {
 		log.V(7).Error(err, "wrong format for recommended versions in central config")
 		return
 	}
-	recommendedVersions, err := SortRecommendedVersionsDescending(value)
+	recommendedVersions, err := sortRecommendedVersionsDescending(value)
 	if err != nil {
 		log.V(7).Error(err, "failed to sort recommended versions")
 		return
@@ -69,17 +68,17 @@ func CheckRecommendedCLIVersion(cmd *cobra.Command) {
 
 	currentVersion := buildinfo.Version
 	includePreReleases := utils.IsPreRelease(currentVersion)
-	major := FindRecommendedMajorVersion(recommendedVersions, currentVersion, includePreReleases)
-	minor := FindRecommendedMinorVersion(recommendedVersions, currentVersion, includePreReleases)
-	patch := FindRecommendedPatchVersion(recommendedVersions, currentVersion, includePreReleases)
+	major := findRecommendedMajorVersion(recommendedVersions, currentVersion, includePreReleases)
+	minor := findRecommendedMinorVersion(recommendedVersions, currentVersion, includePreReleases)
+	patch := findRecommendedPatchVersion(recommendedVersions, currentVersion, includePreReleases)
 
 	printVersionRecommendations(cmd.ErrOrStderr(), currentVersion, major, minor, patch)
 }
 
-// FindRecommendedMajorVersion will return the recommended major version from the list of
+// findRecommendedMajorVersion will return the recommended major version from the list of
 // recommended versions. If the current version is already at the most recent major version,
 // it will return an empty string.
-func FindRecommendedMajorVersion(recommendedVersions []string, currentVersion string, includePreReleases bool) string {
+func findRecommendedMajorVersion(recommendedVersions []string, currentVersion string, includePreReleases bool) string {
 	for _, newVersion := range recommendedVersions {
 		if !includePreReleases && utils.IsPreRelease(newVersion) {
 			// Skip pre-release versions
@@ -96,10 +95,10 @@ func FindRecommendedMajorVersion(recommendedVersions []string, currentVersion st
 	return ""
 }
 
-// FindRecommendedMinorVersion will return the recommended minor version from the list of
+// findRecommendedMinorVersion will return the recommended minor version from the list of
 // recommended versions. If the current version is already at the most recent minor version,
 // it will return an empty string.
-func FindRecommendedMinorVersion(recommendedVersions []string, currentVersion string, includePreReleases bool) string {
+func findRecommendedMinorVersion(recommendedVersions []string, currentVersion string, includePreReleases bool) string {
 	for _, newVersion := range recommendedVersions {
 		if !includePreReleases && utils.IsPreRelease(newVersion) {
 			// Skip pre-release versions
@@ -122,10 +121,10 @@ func FindRecommendedMinorVersion(recommendedVersions []string, currentVersion st
 	return ""
 }
 
-// FindRecommendedPatchVersion will return the recommended patch version from the list of
+// findRecommendedPatchVersion will return the recommended patch version from the list of
 // recommended versions. If the current version is already at that patch version,
 // it will return an empty string.
-func FindRecommendedPatchVersion(recommendedVersions []string, currentVersion string, includePreReleases bool) string {
+func findRecommendedPatchVersion(recommendedVersions []string, currentVersion string, includePreReleases bool) string {
 	for _, newVersion := range recommendedVersions {
 		if !includePreReleases && utils.IsPreRelease(newVersion) {
 			// Skip pre-release versions
@@ -148,9 +147,9 @@ func FindRecommendedPatchVersion(recommendedVersions []string, currentVersion st
 	return ""
 }
 
-// SortRecommendedVersionsDescending will convert the comma-separated list of recommended
+// sortRecommendedVersionsDescending will convert the comma-separated list of recommended
 // versions into an array sorted in descending order of semver
-func SortRecommendedVersionsDescending(recommendedVersionStr string) ([]string, error) {
+func sortRecommendedVersionsDescending(recommendedVersionStr string) ([]string, error) {
 	// The value is in the form "v1.2.1,v1.1.0,v0.90.1"
 	// which is a comma separated list of recommended versions for each minor version of the CLI.
 	recommendedArray := strings.Split(recommendedVersionStr, ",")
@@ -200,8 +199,8 @@ func shouldCheckVersion() bool {
 	}
 
 	// Get the last time the version check was done
-	lastCheck := datastore.GetDataStoreValue(dataStoreLastVersionCheckKey)
-	if lastCheck == nil {
+	lastCheck, err := datastore.GetDataStoreValue(dataStoreLastVersionCheckKey)
+	if err != nil || lastCheck == nil {
 		return true
 	}
 
@@ -233,21 +232,21 @@ func printVersionRecommendations(writer io.Writer, currentVersion, major, minor,
 
 	if major != "" {
 		if utils.IsNewVersion(major, currentVersion) {
-			fmt.Fprintf(writer, "  - %s (new features but breaking changes)\n", major)
+			fmt.Fprintf(writer, "  - %s\n", major)
 		} else {
 			fmt.Fprintf(writer, "  - %s ([!] you should downgrade to a previous major version)\n", major)
 		}
 	}
 	if minor != "" {
 		if utils.IsNewVersion(minor, currentVersion) {
-			fmt.Fprintf(writer, "  - %s (new features with backwards-compatibility)\n", minor)
+			fmt.Fprintf(writer, "  - %s\n", minor)
 		} else {
 			fmt.Fprintf(writer, "  - %s ([!] you should downgrade to a previous minor version)\n", minor)
 		}
 	}
 	if patch != "" {
 		if utils.IsNewVersion(patch, currentVersion) {
-			fmt.Fprintf(writer, "  - %s (bugs and security fixes)\n", patch)
+			fmt.Fprintf(writer, "  - %s\n", patch)
 		} else {
 			fmt.Fprintf(writer, "  - %s ([!] you should downgrade to a previous patch version)\n", patch)
 		}
