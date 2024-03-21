@@ -76,6 +76,11 @@ func (c *centralConfigYamlReader) GetCentralConfigEntry(key string, out interfac
 
 //nolint:funlen,gocyclo
 func extractValue(out interface{}, values map[string]interface{}, key string) (ok bool, err error) {
+	res, ok := values[key]
+	if !ok {
+		return false, nil
+	}
+
 	v := reflect.ValueOf(out)
 	if v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -122,24 +127,24 @@ func extractValue(out interface{}, values map[string]interface{}, key string) (o
 		if err == nil && ok {
 			v.Set(reflect.ValueOf(result))
 		}
-	case stringMapType:
-		var result map[string]string
-		result, ok, err = unstructured.NestedStringMap(values, key)
-		if err == nil && ok {
-			v.Set(reflect.ValueOf(result))
-		}
+	// case stringMapType:
+	// 	var result map[string]string
+	// 	result, ok, err = unstructured.NestedStringMap(values, key)
+	// 	if err == nil && ok {
+	// 		v.Set(reflect.ValueOf(result))
+	// 	}
 	case arrayType: // generic array
 		var result []interface{}
 		result, ok, err = unstructured.NestedSlice(values, key)
 		if err == nil && ok {
 			v.Set(reflect.ValueOf(result))
 		}
-	case mapType: // generic map
-		var result map[string]interface{}
-		result, ok, err = unstructured.NestedMap(values, key)
-		if err == nil && ok {
-			v.Set(reflect.ValueOf(result))
-		}
+	// case mapType: // generic map
+	// 	var result map[string]interface{}
+	// 	result, ok, err = unstructured.NestedMap(values, key)
+	// 	if err == nil && ok {
+	// 		v.Set(reflect.ValueOf(result))
+	// 	}
 	case timeType:
 		var result time.Time
 		var val interface{}
@@ -153,7 +158,11 @@ func extractValue(out interface{}, values map[string]interface{}, key string) (o
 			}
 		}
 	default:
-		err = fmt.Errorf("unsupported type: %s", v.Type())
+		var yamlBytes []byte
+		yamlBytes, err = yaml.Marshal(res)
+		if err == nil {
+			err = yaml.Unmarshal(yamlBytes, out)
+		}
 	}
 	return ok, err
 }

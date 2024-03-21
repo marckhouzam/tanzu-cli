@@ -23,6 +23,12 @@ func TestGetCentralConfigEntry(t *testing.T) {
 	timestamp, err := time.Parse(time.RFC3339, timestampStr)
 	assert.Nil(t, err)
 
+	type TestArtifact struct {
+		Image string
+		OS    string
+		Arch  string
+	}
+
 	tcs := []struct {
 		name        string
 		cfgContent  string
@@ -209,6 +215,19 @@ func TestGetCentralConfigEntry(t *testing.T) {
   ]
 }`,
 		},
+		{
+			name: "Any custom type",
+			cfgContent: `testKey:
+  image: "fake.test.image.io/fake-image"
+  os: darwin
+  arch: amd64`,
+			key: "testKey",
+			expected: TestArtifact{
+				Image: "fake.test.image.io/fake-image",
+				OS:    "darwin",
+				Arch:  "amd64",
+			},
+		},
 	}
 
 	dir, err := os.MkdirTemp("", "test-central-config")
@@ -284,8 +303,10 @@ func TestGetCentralConfigEntry(t *testing.T) {
 					var result map[string]interface{}
 					err = reader.GetCentralConfigEntry(tc.key, &result)
 					genericVar = result
-				default:
-					t.Fatalf("unsupported type: %v", expectedType)
+				case reflect.TypeOf(TestArtifact{}):
+					result := TestArtifact{}
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
 				}
 			}
 			if tc.expectError {
