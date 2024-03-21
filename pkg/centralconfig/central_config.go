@@ -14,15 +14,14 @@ import (
 // CentralConfigFileName is the name of the central config file
 const CentralConfigFileName = "central_config.yaml"
 
-// CentralConfigKey represents the key of a central configuration entry.
-type CentralConfigKey string
-
-// CentralConfigValue represents the value of a central configuration entry.
-type CentralConfigValue interface{}
-
 // CentralConfig is used to interact with the central configuration.
 type CentralConfig interface {
-	GetCentralConfigEntry(key CentralConfigKey) (CentralConfigValue, error)
+	// GetCentralConfigEntry reads the central configuration and
+	// returns the value for the given key. The value is unmarshalled
+	// into the out parameter. The out parameter must be a non-nil
+	// pointer to a value.  If the key does not exist, the out parameter
+	// is not modified and an error is returned.
+	GetCentralConfigEntry(key string, out interface{}) error
 }
 
 // NewCentralConfigReader returns a CentralConfig reader that can

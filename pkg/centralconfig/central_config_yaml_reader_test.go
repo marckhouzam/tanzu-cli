@@ -6,6 +6,7 @@ package centralconfig
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -26,27 +27,72 @@ func TestGetCentralConfigEntry(t *testing.T) {
 		name        string
 		cfgContent  string
 		nofile      bool
-		key         CentralConfigKey
-		expected    CentralConfigValue
+		nopointer   bool
+		key         string
+		expected    interface{}
 		expectError bool
 	}{
 		{
-			name:     "No file for central config",
-			nofile:   true,
-			key:      "testKey",
-			expected: nil,
+			name:        "Missing key",
+			cfgContent:  "testKey: testValue",
+			key:         "invalidKey",
+			expected:    "", // To specify the type
+			expectError: true,
 		},
 		{
-			name:       "Empty central config",
-			cfgContent: "",
-			key:        "testKey",
-			expected:   nil,
+			name:        "Empty key",
+			cfgContent:  "testKey: testValue",
+			key:         "",
+			expected:    "",
+			expectError: true,
+		},
+		{
+			name:        "Empty value",
+			cfgContent:  "testKey: ",
+			key:         "testKey",
+			expected:    "",
+			expectError: true,
+		},
+		{
+			name: "Invalid yaml",
+			cfgContent: `testKey: testValue
+		- invalid`,
+			key:         "testKey",
+			expected:    "",
+			expectError: true,
+		},
+		{
+			name:        "No file for central config",
+			nofile:      true,
+			key:         "testKey",
+			expected:    "",
+			expectError: true,
+		},
+		{
+			name:        "Not passing a pointer",
+			nopointer:   true,
+			key:         "testKey",
+			expected:    "",
+			expectError: true,
+		},
+		{
+			name:        "Empty central config",
+			cfgContent:  "",
+			key:         "testKey",
+			expected:    "",
+			expectError: true,
 		},
 		{
 			name:       "String value",
 			cfgContent: "testKey: testValue",
 			key:        "testKey",
 			expected:   "testValue",
+		},
+		{
+			name:       "String empty value",
+			cfgContent: `testKey: ""`,
+			key:        "testKey",
+			expected:   "",
 		},
 		{
 			name:       "Boolean true value",
@@ -67,10 +113,28 @@ func TestGetCentralConfigEntry(t *testing.T) {
 			expected:   false,
 		},
 		{
-			name:       "Boolean int value",
+			name:       "Int value",
 			cfgContent: "testKey: 1",
 			key:        "testKey",
 			expected:   1,
+		},
+		{
+			name:       "Negative int value",
+			cfgContent: "testKey: -1",
+			key:        "testKey",
+			expected:   -1,
+		},
+		{
+			name:       "Float value",
+			cfgContent: "testKey: 1.0",
+			key:        "testKey",
+			expected:   1.0,
+		},
+		{
+			name:       "Negative float value",
+			cfgContent: "testKey: -1.0",
+			key:        "testKey",
+			expected:   -1.0,
 		},
 		{
 			name:       "Timestamp value",
@@ -79,75 +143,53 @@ func TestGetCentralConfigEntry(t *testing.T) {
 			expected:   timestamp,
 		},
 		{
-			name: "Complex map value",
+			name: "String array value",
 			cfgContent: `testKey:
-  testSubKey: testValue`,
+- testValue1
+- testValue2`,
 			key:      "testKey",
-			expected: map[string]interface{}{"testSubKey": "testValue"},
+			expected: []string{"testValue1", "testValue2"},
 		},
 		{
-			name: "An array value",
+			name: "String map value",
 			cfgContent: `testKey:
-  - testValue1
-  - testValue2`,
+  testSubKey1: testValue1
+  testSubKey2: testValue2`,
 			key:      "testKey",
-			expected: interface{}([]interface{}{"testValue1", "testValue2"}),
+			expected: map[string]string{"testSubKey1": "testValue1", "testSubKey2": "testValue2"},
 		},
 		{
-			name: "A map of array value",
+			name: "Any array value",
 			cfgContent: `testKey:
-  testSubKey:
-  - testValue1
-  - testValue2`,
+- true
+- false`,
 			key:      "testKey",
-			expected: map[string]interface{}{"testSubKey": []interface{}{"testValue1", "testValue2"}},
+			expected: []interface{}{true, false},
+		},
+		{
+			name: "Any map value",
+			cfgContent: `testKey:
+  testSubKey1: true
+  testSubKey2: testValue`,
+			key:      "testKey",
+			expected: map[string]interface{}{"testSubKey1": true, "testSubKey2": "testValue"},
 		},
 		{
 			name: "A complex string",
 			cfgContent: `testKey: |-
- {
-   "testSubKey": [ 
-     "testValue1",
-     "testValue1"
-   ]
- }`,
+  {
+    "testSubKey": [
+      "testValue1",
+      "testValue1"
+    ]
+  }`,
 			key: "testKey",
 			expected: `{
-  "testSubKey": [ 
+  "testSubKey": [
     "testValue1",
     "testValue1"
   ]
 }`,
-		}, {
-			name: "Missing key",
-			cfgContent: `testKey:
-  testSubKey:
-  - testValue1
-  - testValue2`,
-			key:      "invalidKey",
-			expected: nil,
-		},
-		{
-			name: "Empty key",
-			cfgContent: `testKey:
-  testSubKey:
-  - testValue1
-  - testValue2`,
-			key:      "",
-			expected: nil,
-		},
-		{
-			name:       "Empty value",
-			cfgContent: "testKey: ",
-			key:        "testKey",
-			expected:   interface{}(nil),
-		},
-		{
-			name: "Invalid yaml",
-			cfgContent: `testKey: testValue
-- invalid`,
-			key:         "testKey",
-			expectError: true,
 		},
 	}
 
@@ -166,10 +208,13 @@ func TestGetCentralConfigEntry(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if !tc.nofile {
+			path := reader.(*centralConfigYamlReader).configFile
+			if tc.nofile {
+				// Allows to test without a central config file
+				err = os.Remove(path)
+				assert.Nil(t, err)
+			} else {
 				// Write the central config test content to the file
-				path := reader.(*centralConfigYamlReader).configFile
-
 				err = os.MkdirAll(filepath.Dir(path), 0755)
 				assert.Nil(t, err)
 
@@ -177,16 +222,63 @@ func TestGetCentralConfigEntry(t *testing.T) {
 				assert.Nil(t, err)
 			}
 
-			value, err := reader.GetCentralConfigEntry(tc.key)
+			var genericVar interface{}
+			if tc.nopointer {
+				var result string
+				// Don't pass a pointer.  This should trigger an error
+				err = reader.GetCentralConfigEntry(tc.key, result)
+				genericVar = result
+			} else {
+				switch expectedType := reflect.TypeOf(tc.expected); expectedType {
+				case stringType:
+					var result string
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
+				case boolType:
+					var result bool
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
+				case intType:
+					var result int
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
+				case floatType:
+					var result float64
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
+				case stringArrayType:
+					var result []string
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
+				case stringMapType:
+					var result map[string]string
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
+				case timeType:
+					var result time.Time
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
+				case arrayType:
+					var result []interface{}
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
+				case mapType:
+					var result map[string]interface{}
+					err = reader.GetCentralConfigEntry(tc.key, &result)
+					genericVar = result
+				default:
+					t.Fatalf("unsupported type: %v", expectedType)
+				}
+			}
 			if tc.expectError {
 				assert.NotNil(t, err)
 			} else {
 				assert.Nil(t, err)
 			}
 			if tc.expected == nil {
-				assert.Nil(t, value)
+				assert.Nil(t, genericVar)
 			} else {
-				assert.Equal(t, tc.expected, value)
+				assert.Equal(t, tc.expected, genericVar)
 			}
 		})
 	}

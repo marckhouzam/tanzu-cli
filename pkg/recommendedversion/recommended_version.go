@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/vmware-tanzu/tanzu-cli/pkg/buildinfo"
 	"github.com/vmware-tanzu/tanzu-cli/pkg/centralconfig"
@@ -51,27 +50,14 @@ func CheckRecommendedCLIVersion(cmd *cobra.Command) {
 
 	// Get the recommended versions from the central configuration
 	reader := centralconfig.NewCentralConfigReader(discoverySource)
-	recommendedVersionValue, err := reader.GetCentralConfigEntry(centralConfigRecommendedVersionsKey)
+	var recommendedVersions []string
+	err = reader.GetCentralConfigEntry(centralConfigRecommendedVersionsKey, &recommendedVersions)
 	if err != nil {
 		log.V(7).Error(err, "error reading recommended versions from central config")
 		return
 	}
-	if recommendedVersionValue == nil {
-		log.V(7).Error(err, "missing key for recommended versions in central config")
-		return
-	}
 
-	wrapper := make(map[string]interface{})
-	key := "fakeKey"
-	wrapper[key] = recommendedVersionValue
-	versions, ok, err := unstructured.NestedStringSlice(wrapper, key)
-
-	if err != nil || !ok {
-		log.V(7).Error(err, "wrong format for recommended versions in central config")
-		return
-	}
-
-	recommendedVersions, err := sortRecommendedVersionsDescending(versions)
+	recommendedVersions, err = sortRecommendedVersionsDescending(recommendedVersions)
 	if err != nil {
 		log.V(7).Error(err, "failed to sort recommended versions")
 		return
