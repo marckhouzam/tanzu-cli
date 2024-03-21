@@ -112,11 +112,29 @@ func TestGetCentralConfigEntry(t *testing.T) {
 			key:        "testKey",
 			expected:   false,
 		},
+		// {
+		// 	name:       "Int value",
+		// 	cfgContent: "testKey: 1",
+		// 	key:        "testKey",
+		// 	expected:   int64(1),
+		// },
+		// {
+		// 	name:       "Negative int value",
+		// 	cfgContent: "testKey: -1",
+		// 	key:        "testKey",
+		// 	expected:   -1,
+		// },
 		{
-			name:       "Int value",
-			cfgContent: "testKey: 1",
+			name:       "Float value",
+			cfgContent: "testKey: 1.0",
 			key:        "testKey",
-			expected:   1,
+			expected:   1.0,
+		},
+		{
+			name:       "Negative float value",
+			cfgContent: "testKey: -1.0",
+			key:        "testKey",
+			expected:   -1.0,
 		},
 		{
 			name:       "Negative int value",
