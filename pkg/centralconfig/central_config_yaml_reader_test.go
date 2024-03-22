@@ -16,6 +16,19 @@ import (
 	"github.com/vmware-tanzu/tanzu-plugin-runtime/config/types"
 )
 
+var (
+	stringType      = reflect.TypeOf("")
+	boolType        = reflect.TypeOf(true)
+	intType         = reflect.TypeOf(1)
+	floatType       = reflect.TypeOf(1.0)
+	stringArrayType = reflect.TypeOf([]string{})
+	stringMapType   = reflect.TypeOf(map[string]string{})
+	arrayType       = reflect.TypeOf([]interface{}{})
+	mapType         = reflect.TypeOf(map[string]interface{}{})
+	timeType        = reflect.TypeOf(time.Time{})
+)
+
+//nolint:gocyclo
 func TestGetCentralConfigEntry(t *testing.T) {
 	// Create a timestamp in the RFC3339 format
 	timestampStr := time.Now().Format(time.RFC3339)
@@ -53,11 +66,10 @@ func TestGetCentralConfigEntry(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:        "Empty value",
-			cfgContent:  "testKey: ",
-			key:         "testKey",
-			expected:    "",
-			expectError: true,
+			name:       "Empty value",
+			cfgContent: "testKey: ",
+			key:        "testKey",
+			expected:   "",
 		},
 		{
 			name: "Invalid yaml",
@@ -77,6 +89,7 @@ func TestGetCentralConfigEntry(t *testing.T) {
 		{
 			name:        "Not passing a pointer",
 			nopointer:   true,
+			cfgContent:  "testKey: testValue",
 			key:         "testKey",
 			expected:    "",
 			expectError: true,
@@ -118,18 +131,18 @@ func TestGetCentralConfigEntry(t *testing.T) {
 			key:        "testKey",
 			expected:   false,
 		},
-		// {
-		// 	name:       "Int value",
-		// 	cfgContent: "testKey: 1",
-		// 	key:        "testKey",
-		// 	expected:   int64(1),
-		// },
-		// {
-		// 	name:       "Negative int value",
-		// 	cfgContent: "testKey: -1",
-		// 	key:        "testKey",
-		// 	expected:   -1,
-		// },
+		{
+			name:       "Int value",
+			cfgContent: "testKey: 1",
+			key:        "testKey",
+			expected:   1,
+		},
+		{
+			name:       "Negative int value",
+			cfgContent: "testKey: -1",
+			key:        "testKey",
+			expected:   -1,
+		},
 		{
 			name:       "Float value",
 			cfgContent: "testKey: 1.0",
@@ -307,6 +320,8 @@ func TestGetCentralConfigEntry(t *testing.T) {
 					result := TestArtifact{}
 					err = reader.GetCentralConfigEntry(tc.key, &result)
 					genericVar = result
+				default:
+					t.Fatalf("unsupported type: %v", expectedType)
 				}
 			}
 			if tc.expectError {

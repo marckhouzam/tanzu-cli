@@ -8,22 +8,8 @@ import (
 	"fmt"
 	"os"
 	"reflect"
-	"time"
 
 	"gopkg.in/yaml.v3"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-)
-
-var (
-	stringType      = reflect.TypeOf("")
-	boolType        = reflect.TypeOf(true)
-	intType         = reflect.TypeOf(1)
-	floatType       = reflect.TypeOf(1.0)
-	stringArrayType = reflect.TypeOf([]string{})
-	stringMapType   = reflect.TypeOf(map[string]string{})
-	arrayType       = reflect.TypeOf([]interface{}{})
-	mapType         = reflect.TypeOf(map[string]interface{}{})
-	timeType        = reflect.TypeOf(time.Time{})
 )
 
 type centralConfigYamlReader struct {
@@ -74,95 +60,20 @@ func (c *centralConfigYamlReader) GetCentralConfigEntry(key string, out interfac
 	return nil
 }
 
-//nolint:funlen,gocyclo
-func extractValue(out interface{}, values map[string]interface{}, key string) (ok bool, err error) {
+func extractValue(out interface{}, values map[string]interface{}, key string) (bool, error) {
 	res, ok := values[key]
 	if !ok {
 		return false, nil
 	}
 
 	v := reflect.ValueOf(out)
-	if v.Kind() == reflect.Ptr && !v.IsNil() {
-		v = v.Elem()
-	} else {
+	if v.Kind() != reflect.Ptr || v.IsNil() {
 		return false, fmt.Errorf("out must be a pointer to a value")
 	}
-
-	switch v.Type() {
-	case stringType:
-		var result string
-		result, ok, err = unstructured.NestedString(values, key)
-		if err == nil && ok {
-			v.Set(reflect.ValueOf(result))
-		}
-	case boolType:
-		var result bool
-		result, ok, err = unstructured.NestedBool(values, key)
-		if err == nil && ok {
-			v.Set(reflect.ValueOf(result))
-		}
-	case intType:
-		// The "unstructured" package only supports int64 but when parsing yaml, we get
-		// an int type.  To deal with this we have to implement the support ourselves
-		var result int
-		var val interface{}
-		val, ok, err = unstructured.NestedFieldNoCopy(values, key)
-		if err == nil && ok {
-			result, ok = val.(int)
-			if !ok {
-				err = fmt.Errorf("error: %v is of the type %T, expected int", val, val)
-			} else {
-				v.Set(reflect.ValueOf(result))
-			}
-		}
-	case floatType:
-		var result float64
-		result, ok, err = unstructured.NestedFloat64(values, key)
-		if err == nil && ok {
-			v.Set(reflect.ValueOf(result))
-		}
-	case stringArrayType:
-		var result []string
-		result, ok, err = unstructured.NestedStringSlice(values, key)
-		if err == nil && ok {
-			v.Set(reflect.ValueOf(result))
-		}
-	// case stringMapType:
-	// 	var result map[string]string
-	// 	result, ok, err = unstructured.NestedStringMap(values, key)
-	// 	if err == nil && ok {
-	// 		v.Set(reflect.ValueOf(result))
-	// 	}
-	case arrayType: // generic array
-		var result []interface{}
-		result, ok, err = unstructured.NestedSlice(values, key)
-		if err == nil && ok {
-			v.Set(reflect.ValueOf(result))
-		}
-	// case mapType: // generic map
-	// 	var result map[string]interface{}
-	// 	result, ok, err = unstructured.NestedMap(values, key)
-	// 	if err == nil && ok {
-	// 		v.Set(reflect.ValueOf(result))
-	// 	}
-	case timeType:
-		var result time.Time
-		var val interface{}
-		val, ok, err = unstructured.NestedFieldNoCopy(values, key)
-		if err == nil && ok {
-			result, ok = val.(time.Time)
-			if !ok {
-				err = fmt.Errorf("error: %v is of the type %T, expected time.Time", val, val)
-			} else {
-				v.Set(reflect.ValueOf(result))
-			}
-		}
-	default:
-		var yamlBytes []byte
-		yamlBytes, err = yaml.Marshal(res)
-		if err == nil {
-			err = yaml.Unmarshal(yamlBytes, out)
-		}
+	yamlBytes, err := yaml.Marshal(res)
+	if err == nil {
+		err = yaml.Unmarshal(yamlBytes, out)
 	}
+
 	return ok, err
 }
