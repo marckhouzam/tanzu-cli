@@ -1156,17 +1156,19 @@ func DiscoverPluginsFromLocalSource(localPath string) ([]discovery.Discovered, e
 		return nil, nil
 	}
 
-	plugins, err := discoverPluginsFromLocalSource(localPath)
-	// If no error then return the discovered plugins
-	if err == nil {
-		return plugins, nil
+	// If the specified path is a file then we must be installing from a binary
+	if info, err := os.Stat(localPath); err == nil && !info.IsDir() {
+		discovered, err := discoverPluginFromBinary(localPath)
+		return []discovery.Discovered{*discovered}, err
 	}
 
 	// Check if the manifest.yaml or plugin_manifest.yaml file exists to see if the directory can be used or not
 	_, err2 := os.Stat(filepath.Join(localPath, ManifestFileName))
 	_, err3 := os.Stat(filepath.Join(localPath, PluginManifestFileName))
 	if errors.Is(err2, os.ErrNotExist) && errors.Is(err3, os.ErrNotExist) {
-		return nil, err
+		// Return the error from trying to find plugin_manifest.yaml since that is the
+		// preferred discovery method
+		return nil, err3
 	}
 
 	// As manifest.yaml or plugin_manifest.yaml file exists it assumes in this case the directory is supported
@@ -1174,41 +1176,26 @@ func DiscoverPluginsFromLocalSource(localPath string) ([]discovery.Discovered, e
 	return discoverPluginsFromLocalSourceBasedOnManifestFile(localPath)
 }
 
-func discoverPluginsFromLocalSource(localPath string) ([]discovery.Discovered, error) {
-	// Set default local plugin distro to localpath while installing the plugin
-	// from local source. This is done to allow CLI to know the basepath incase the
-	// relative path is provided as part of CLIPlugin definition for local discovery
-	common.DefaultLocalPluginDistroDir = localPath
-
-	var pds []configtypes.PluginDiscovery
-
-	items, err := os.ReadDir(filepath.Join(localPath, "discovery"))
+// discoverPluginFromBinary discovers a single plugin from the plugin's binary
+func discoverPluginFromBinary(binaryPath string) (*discovery.Discovered, error) {
+	// Read the details about the plugin from the binary itself
+	pluginInfo, err := describePlugin(&discovery.Discovered{}, binaryPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error while reading local plugin manifest directory")
-	}
-	for _, item := range items {
-		if item.IsDir() {
-			pd := configtypes.PluginDiscovery{
-				Local: &configtypes.LocalDiscovery{
-					Name: "",
-					Path: filepath.Join(localPath, "discovery", item.Name()),
-				},
-			}
-			pds = append(pds, pd)
-		}
+		return nil, err
 	}
 
-	plugins, err := discoverSpecificPlugins(pds)
+	p := getCLIPluginResourceWithLocalDistroFromPluginInfo(pluginInfo, binaryPath)
+
+	// Create discovery.Discovered resource from CLIPlugin resource
+	dp, err := discovery.DiscoveredFromK8sV1alpha1(&p)
 	if err != nil {
-		log.Warningf(errorWhileDiscoveringPlugins, err.Error())
+		return nil, err
 	}
+	dp.DiscoveryType = common.DiscoveryTypeLocal
+	dp.Scope = common.PluginScopeStandalone
+	dp.Status = common.PluginStatusNotInstalled
 
-	for i := range plugins {
-		plugins[i].Scope = common.PluginScopeStandalone
-		plugins[i].Status = common.PluginStatusNotInstalled
-		plugins[i].DiscoveryType = common.DiscoveryTypeLocal
-	}
-	return plugins, nil
+	return &dp, nil
 }
 
 // Clean deletes all plugins and tests.

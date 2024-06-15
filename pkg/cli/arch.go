@@ -17,11 +17,11 @@ var (
 	AllOSArch = []Arch{LinuxAMD64, DarwinAMD64, WinAMD64, LinuxARM64, DarwinARM64, WinARM64}
 
 	// GOOS is the current go os.  Defaults to runtime.GOOS but could be overridden.
-	// The CLI code should always this variable instead of runtime.GOOS.
+	// The CLI code should always use this variable instead of runtime.GOOS.
 	GOOS = runtime.GOOS
 	// GOARCH is the current go architecture.  Defaults to runtime.GOARCH but is overridden
 	// for scenarios like installing AMD64 plugins on an ARM64 machine using emulation.
-	// The CLI code should always this variable instead of runtime.GOARCH.
+	// The CLI code should always use this variable instead of runtime.GOARCH.
 	GOARCH = runtime.GOARCH
 )
 
