@@ -75,6 +75,15 @@ LD_FLAGS += -X 'github.com/vmware-tanzu/tanzu-cli/pkg/buildinfo.Date=$(BUILD_DAT
 LD_FLAGS += -X 'github.com/vmware-tanzu/tanzu-cli/pkg/buildinfo.SHA=$(BUILD_SHA)'
 LD_FLAGS += -X 'github.com/vmware-tanzu/tanzu-cli/pkg/buildinfo.Version=$(BUILD_VERSION)'
 
+# Set the cf version to the one that was included in the go.mod file
+CF_VERSION="8.8.12"
+CF_BUILD_SHA ?= "11057ae"
+CF_BUILD_DATE ?= "2025-02-25"
+CF_BUILD_VERSION ?= "$(CF_VERSION)+$(CF_BUILD_SHA).$(CF_BUILD_DATE)"
+LD_FLAGS += -X 'code.cloudfoundry.org/cli/version.binaryVersion=$(CF_BUILD_VERSION)'
+LD_FLAGS += -X 'code.cloudfoundry.org/cli/version.binarySHA=$(CF_BUILD_SHA)'
+LD_FLAGS += -X 'code.cloudfoundry.org/cli/version.binaryBuildDate=$(CF_BUILD_DATE)'
+
 # Remove debug symbols to reduce binary size
 # To build with debug symbols: TANZU_CLI_ENABLE_DEBUG=1
 ifneq ($(strip $(TANZU_CLI_ENABLE_DEBUG)),1)

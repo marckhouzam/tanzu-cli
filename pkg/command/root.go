@@ -10,11 +10,20 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	cfcmd "code.cloudfoundry.org/cli/cf/cmd"
+	cfcommon "code.cloudfoundry.org/cli/command/common"
+	"code.cloudfoundry.org/cli/util/command_parser"
+	"code.cloudfoundry.org/cli/util/configv3"
+	"code.cloudfoundry.org/cli/util/panichandler"
+	plugin_util "code.cloudfoundry.org/cli/util/plugin"
+	"code.cloudfoundry.org/cli/util/ui"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -81,9 +90,77 @@ func convertInvokedAs(plugins []cli.PluginInfo) {
 	}
 }
 
+func createCFCommand() (*cobra.Command, error) {
+	return &cobra.Command{
+		Use:                "cf",
+		Short:              "the CF CLI",
+		Long:               "the CF CLI",
+		DisableFlagParsing: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			// Set the os.Args so that the help output is correct;
+			// this is because the CF CLI code reads from os.Args directly
+			// for its help output.
+			// cliPath := os.Getenv("TANZU_BIN")
+			// os.Args = append([]string{cliPath + " cf"}, args...)
+			var exitCode int
+			defer panichandler.HandlePanic()
+
+			config, err := configv3.GetCFConfig()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unexpected error: %s\n", err.Error())
+				os.Exit(1)
+			}
+
+			commandUI, err := ui.NewUI(config)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unexpected error: %s\n", err.Error())
+				os.Exit(1)
+			}
+
+			p, err := command_parser.NewCommandParser(config)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unexpected error: %s\n", err.Error())
+				os.Exit(1)
+			}
+
+			exitCode, err = p.ParseCommandFromArgs(commandUI, os.Args[1:])
+			if err == nil {
+				os.Exit(exitCode)
+			}
+
+			if unknownCommandError, ok := err.(command_parser.UnknownCommandError); ok {
+				plugin, commandIsPlugin := plugin_util.IsPluginCommand(os.Args[1:])
+
+				switch {
+				case commandIsPlugin:
+					err = plugin_util.RunPlugin(plugin)
+					if err != nil {
+						exitCode = 1
+					}
+
+				case cfcommon.ShouldFallbackToLegacy:
+					cfcmd.Main(os.Getenv("CF_TRACE"), os.Args)
+					//NOT REACHED, legacy main will exit the process
+
+				default:
+					unknownCommandError.Suggest(plugin_util.PluginCommandNames())
+					fmt.Fprintf(os.Stderr, "%s\n", unknownCommandError.Error())
+					os.Exit(1)
+				}
+			}
+
+			os.Exit(exitCode)
+		},
+	}, nil
+}
+
 // createRootCmd creates a root command.
 // NOTE: Do not use this function directly as it will bypass the locking. Use `NewRootCmd` instead
 func createRootCmd() (*cobra.Command, error) { //nolint: gocyclo
+	if filepath.Base(os.Args[0]) == "cf" {
+		return createCFCommand()
+	}
+
 	go interruptHandle()
 	var rootCmd = newRootCmd()
 	uFunc := cli.NewMainUsage().UsageFunc()
