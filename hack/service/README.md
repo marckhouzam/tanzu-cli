@@ -53,3 +53,32 @@ make start-test-central-repo
 # testing is more appropriate.  This would be done by doing:
 tanzu config cert delete localhost:9876
 ```
+
+# Passthrough cache for the plugin discovery
+
+The test CLI-Svc can also serves as a passthrough to the OCI plugin discovery.
+The idea is to have a well-known address for the CLI to access the plugin discovery
+as well as allowing for end-user machines not to have direct access to the OCI
+registry itself.
+
+In this test environment we achieve this by starting a OCI registry cache to which
+the test CLI-Svc is already configured to passthrough:
+
+                               localhost:9443/tanzu_cli/plugins/plugin-inventory:latest
+                                                     ^
+/----------\      /-------------\      /---------\   |
+| Real OCI |      | registry:v2 |      |  Test   |   |  /-----\ 
+| Registry | <--- |  container  | <--- | CLI-Svc | <--- | CLI |
+\----------/      |  test cache |      \---------/      \-----/
+                  \-------------/
+
+```console
+# Start a passthrough container cache
+make start-passthrough-cache
+
+# Use the now well-known plugin source, no matter where the real OCI registry resides
+tanzu plugin source update default -u localhost:9443/tanzu_cli/plugins/plugin-inventory:latest
+```
+
+To achieve the above, the test CLI-Svc also serves `localhost:9443/v2/.*` which is the endpoint
+needed to access the OCI registry.
