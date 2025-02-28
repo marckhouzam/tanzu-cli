@@ -332,6 +332,31 @@ start-test-cli-service: stop-test-cli-service ## Starts a test CLI service local
 stop-test-cli-service: ## Stops and removes the local test CLI service
 	@docker stop cli-service > /dev/null 2>&1 && echo "Stopped docker test cli service" || true
 
+.PHONY: setup-custom-cert-for-passthrough-cache
+setup-custom-cert-for-passthrough-cache: ## Setup up the custom ca cert for passthrough-cache in the config file
+	@if [ ! -d $(ROOT_DIR)/hack/central-repo/certs ]; then \
+    	wget https://storage.googleapis.com/tanzu-cli/data/testcerts/local-central-repo-testcontent.bz2 -O $(ROOT_DIR)/hack/central-repo/local-central-repo-testcontent.bz2;\
+  		tar xjf $(ROOT_DIR)/hack/central-repo/local-central-repo-testcontent.bz2 -C $(ROOT_DIR)/hack/central-repo/;\
+	fi
+	echo "Adding docker test central repo cert to the config file"
+	TANZU_CLI_CEIP_OPT_IN_PROMPT_ANSWER="No" TANZU_CLI_EULA_PROMPT_ANSWER="Yes" $(ROOT_DIR)/bin/tanzu config cert delete localhost:5555 || true
+	$(ROOT_DIR)/bin/tanzu config cert add --host localhost:5555 --ca-cert $(ROOT_DIR)/hack/central-repo/certs/localhost.crt
+
+.PHONY: stop-passthrough-cache
+stop-passthrough-cache: ## Stops and removes the local OCI passthrough cache
+	@docker stop oci-cache > /dev/null 2>&1 && echo "Stopped OCI cache" || true
+
+.PHONY: start-passthrough-cache
+start-passthrough-cache: stop-passthrough-cache setup-custom-cert-for-passthrough-cache ## Starts up a docker OCI passthrough cache to the main central repo
+	docker run --rm -d -p 5555:443 --name oci-cache \
+		-v $(ROOT_DIR)/hack/central-repo/certs:/certs \
+		-e REGISTRY_HTTP_ADDR=0.0.0.0:443  \
+		-e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/localhost.crt  \
+		-e REGISTRY_HTTP_TLS_KEY=/certs/localhost.key  \
+		-e REGISTRY_PROXY_REMOTEURL=https://projects.packages.broadcom.com \
+		$(REGISTRY_IMAGE) > /dev/null && \
+	echo "Started OCI cache"
+
 .PHONY: fmt
 fmt: $(GOIMPORTS) ## Run goimports
 	$(GOIMPORTS) -w -local github.com/vmware-tanzu ./
