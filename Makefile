@@ -318,44 +318,45 @@ stop-airgapped-local-registry:
 	@docker stop temp-airgapped-local-registry temp-airgapped-local-registry-with-auth > /dev/null 2>&1 && \
 	  echo "Stopping docker test airgapped repo if running..." || true
 
+.PHONY: setup-custom-cert-for-test-cli-service
+setup-custom-cert-for-test-cli-service: ## Setup up the custom ca cert for the test cli service in the config file
+	@if [ ! -d $(ROOT_DIR)/hack/central-repo/certs ]; then \
+    	wget https://storage.googleapis.com/tanzu-cli/data/testcerts/local-central-repo-testcontent.bz2 -O $(ROOT_DIR)/hack/central-repo/local-central-repo-testcontent.bz2;\
+  		tar xjf $(ROOT_DIR)/hack/central-repo/local-central-repo-testcontent.bz2 -C $(ROOT_DIR)/hack/central-repo/;\
+	fi
+	@echo "Adding docker test cli service cert to the config file"
+	@TANZU_CLI_CEIP_OPT_IN_PROMPT_ANSWER="No" TANZU_CLI_EULA_PROMPT_ANSWER="Yes" $(ROOT_DIR)/bin/tanzu config cert delete localhost:8080 &> /dev/null || true
+	$(ROOT_DIR)/bin/tanzu config cert add --host localhost:8080 --ca-cert $(ROOT_DIR)/hack/central-repo/certs/localhost.crt
+
 .PHONY: start-test-cli-service
-start-test-cli-service: stop-test-cli-service ## Starts a test CLI service locally with docker
-	@docker run -d --rm --name cli-service -p 8080:80 \
+start-test-cli-service: stop-test-cli-service setup-custom-cert-for-test-cli-service ## Starts a test CLI service locally with docker
+	@docker run -d --rm --name cli-service -p 8080:443 \
+		-v $(ROOT_DIR)/hack/central-repo/certs:/certs \
 		-v $(ROOT_DIR)/hack/service/install.sh:/var/www/html/cli/v1/install/install.txt \
 		-v $(ROOT_DIR)/hack/service/discovery:/var/www/html/cli/v1/plugin/discovery \
 		-v $(ROOT_DIR)/hack/service/binaries:/var/www/html/cli/v1/binary \
 		-v $(ROOT_DIR)/hack/service/cli-service.conf:/etc/nginx/conf.d/cli-service.conf \
-		nginx:alpine && \
+		nginx:alpine > /dev/null && \
 	echo "Started docker test cli service at 'localhost:8080'"
 
 .PHONY: stop-test-cli-service
 stop-test-cli-service: ## Stops and removes the local test CLI service
 	@docker stop cli-service > /dev/null 2>&1 && echo "Stopped docker test cli service" || true
 
-.PHONY: setup-custom-cert-for-passthrough-cache
-setup-custom-cert-for-passthrough-cache: ## Setup up the custom ca cert for passthrough-cache in the config file
-	@if [ ! -d $(ROOT_DIR)/hack/central-repo/certs ]; then \
-    	wget https://storage.googleapis.com/tanzu-cli/data/testcerts/local-central-repo-testcontent.bz2 -O $(ROOT_DIR)/hack/central-repo/local-central-repo-testcontent.bz2;\
-  		tar xjf $(ROOT_DIR)/hack/central-repo/local-central-repo-testcontent.bz2 -C $(ROOT_DIR)/hack/central-repo/;\
-	fi
-	echo "Adding docker test central repo cert to the config file"
-	TANZU_CLI_CEIP_OPT_IN_PROMPT_ANSWER="No" TANZU_CLI_EULA_PROMPT_ANSWER="Yes" $(ROOT_DIR)/bin/tanzu config cert delete localhost:5555 || true
-	$(ROOT_DIR)/bin/tanzu config cert add --host localhost:5555 --ca-cert $(ROOT_DIR)/hack/central-repo/certs/localhost.crt
-
-.PHONY: stop-passthrough-cache
-stop-passthrough-cache: ## Stops and removes the local OCI passthrough cache
-	@docker stop oci-cache > /dev/null 2>&1 && echo "Stopped OCI cache" || true
-
 .PHONY: start-passthrough-cache
-start-passthrough-cache: stop-passthrough-cache setup-custom-cert-for-passthrough-cache ## Starts up a docker OCI passthrough cache to the main central repo
-	docker run --rm -d -p 5555:443 --name oci-cache \
+start-passthrough-cache: stop-passthrough-cache ## Starts up a docker OCI passthrough cache to the main central repo
+	@docker run --rm -d -p 5555:443 --name oci-cache \
 		-v $(ROOT_DIR)/hack/central-repo/certs:/certs \
 		-e REGISTRY_HTTP_ADDR=0.0.0.0:443  \
 		-e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/localhost.crt  \
 		-e REGISTRY_HTTP_TLS_KEY=/certs/localhost.key  \
 		-e REGISTRY_PROXY_REMOTEURL=https://projects.packages.broadcom.com \
 		$(REGISTRY_IMAGE) > /dev/null && \
-	echo "Started OCI cache"
+	echo "Started OCI cache to projects.packages.broadcom.com"
+
+.PHONY: stop-passthrough-cache
+stop-passthrough-cache: ## Stops and removes the local OCI passthrough cache
+	@docker stop oci-cache > /dev/null 2>&1 && echo "Stopped OCI cache" || true
 
 .PHONY: fmt
 fmt: $(GOIMPORTS) ## Run goimports
