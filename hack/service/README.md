@@ -54,30 +54,32 @@ make start-test-central-repo
 tanzu config cert delete localhost:9876
 ```
 
-# Passthrough cache for the plugin discovery
+# Passthrough for the plugin discovery
 
 The test CLI-Svc can also serves as a passthrough to the OCI plugin discovery.
 The idea is to have a well-known address for the CLI to access the plugin discovery
 as well as allowing for end-user machines not to have direct access to the OCI
 registry itself.
 
-In this test environment we achieve this by starting a OCI registry cache to which
-the test CLI-Svc is already configured to passthrough:
+In this test environment we achieve this by running the test CLI-Svc
+which is already configured to passthrough to the test central repo:
 
-                               localhost:9443/tanzu_cli/plugins/plugin-inventory:latest
-                                                     ^
-/----------\      /-------------\      /---------\   |
-| Real OCI |      | registry:v2 |      |  Test   |   |  /-----\ 
-| Registry | <--- |  container  | <--- | CLI-Svc | <--- | CLI |
-\----------/      |  test cache |      \---------/      \-----/
-                  \-------------/
+
+                 localhost:9443/tanzu-cli/plugins/plugin-inventory:latest
+                               ^
+/----------\     /---------\   |
+| Test OCI |     |  Test   |   |  /-----\
+| Registry | <-- | CLI-Svc | <--- | CLI |
+\----------/     \  nginx  /      \-----/
+                   -------
 
 ```console
-# Start a passthrough container cache
-make start-passthrough-cache
+export TANZU_CLI_PLUGIN_DISCOVERY_IMAGE_SIGNATURE_VERIFICATION_SKIP_LIST=localhost:9443/tanzu-cli/plugins/central:small
+make start-test-central-repo
+make start-test-cli-service
 
 # Use the now well-known plugin source, no matter where the real OCI registry resides
-tanzu plugin source update default -u localhost:9443/tanzu_cli/plugins/plugin-inventory:latest
+tanzu plugin source update default -u localhost:9443/tanzu-cli/plugins/central:small
 ```
 
 To achieve the above, the test CLI-Svc also serves `localhost:9443/v2/.*` which is the endpoint
