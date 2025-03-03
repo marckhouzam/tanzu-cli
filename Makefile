@@ -344,21 +344,6 @@ start-test-cli-service: stop-test-cli-service setup-custom-cert-for-test-cli-ser
 stop-test-cli-service: ## Stops and removes the local test CLI service
 	@docker stop cli-service > /dev/null 2>&1 && echo "Stopped docker test cli service" || true
 
-.PHONY: start-passthrough-cache
-start-passthrough-cache: stop-passthrough-cache ## Starts up a docker OCI passthrough cache to the main central repo
-	@docker run --rm -d -p 5555:443 --name oci-cache \
-		-v $(ROOT_DIR)/hack/central-repo/certs:/certs \
-		-e REGISTRY_HTTP_ADDR=0.0.0.0:443  \
-		-e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/localhost.crt  \
-		-e REGISTRY_HTTP_TLS_KEY=/certs/localhost.key  \
-		-e REGISTRY_PROXY_REMOTEURL=https://projects.packages.broadcom.com \
-		$(REGISTRY_IMAGE) > /dev/null && \
-	echo "Started OCI cache to projects.packages.broadcom.com"
-
-.PHONY: stop-passthrough-cache
-stop-passthrough-cache: ## Stops and removes the local OCI passthrough cache
-	@docker stop oci-cache > /dev/null 2>&1 && echo "Stopped OCI cache" || true
-
 .PHONY: fmt
 fmt: $(GOIMPORTS) ## Run goimports
 	$(GOIMPORTS) -w -local github.com/vmware-tanzu ./
