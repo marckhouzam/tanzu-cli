@@ -4,6 +4,7 @@
 package command
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
@@ -565,6 +566,9 @@ func getIDPType(endpoint string) config.IdpType {
 }
 
 func createContextWithTanzuEndpoint() (context *configtypes.Context, err error) {
+	if endpoint == centralconfig.DefaultTanzuPlatformEndpoint {
+		endpoint = discoverTanzuEndpoint()
+	}
 	if endpoint == "" {
 		endpoint, err = promptEndpoint(centralconfig.DefaultTanzuPlatformEndpoint)
 		if err != nil {
@@ -610,6 +614,67 @@ func createContextWithTanzuEndpoint() (context *configtypes.Context, err error) 
 		context.AdditionalMetadata[config.TanzuAuthEndpointKey] = tanzuAuthEndpoint
 	}
 	return context, err
+}
+
+var defaultTimeout = 5 * time.Second
+
+type endpointDiscoveryResponse struct {
+	Endpoint string `json:"endpoint"`
+}
+
+func discoverTanzuEndpoint() string {
+	tanzuEndpoint := centralconfig.DefaultTanzuPlatformEndpoint
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer cancel()
+
+	tanzuContextDiscoveryEndpointPath := strings.TrimSpace(os.Getenv(constants.TanzuPluginDiscoveryHostforTanzuContext))
+	if tanzuContextDiscoveryEndpointPath == "" {
+		return tanzuEndpoint
+	}
+
+	discoveryEndpoint := fmt.Sprintf("%s/cli/v1/login/", tanzuContextDiscoveryEndpointPath)
+	log.Infof("Discovering Tanzu endpoint from %s", discoveryEndpoint)
+	req, err := http.NewRequestWithContext(ctx, "GET", discoveryEndpoint, http.NoBody)
+	if err != nil {
+		return tanzuEndpoint
+	}
+
+	var res endpointDiscoveryResponse
+	if err := doRequest(req, &res, tanzuContextDiscoveryEndpointPath); err != nil {
+		log.Fatal(err, "")
+		return tanzuEndpoint
+	}
+
+	tanzuEndpoint = res.Endpoint
+	return tanzuEndpoint
+}
+
+func doRequest(req *http.Request, v interface{}, host string) error {
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Accept", "application/json; charset=utf-8")
+
+	host = strings.TrimPrefix(host, "https://")
+	tlsConfig := commonauth.GetTLSConfig(host, "", false)
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy:           http.ProxyFromEnvironment,
+			TLSClientConfig: tlsConfig,
+		},
+		Timeout: time.Second * 10,
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusBadRequest {
+		return fmt.Errorf("API error, status code: %d", res.StatusCode)
+	}
+
+	return json.NewDecoder(res.Body).Decode(v)
 }
 
 func globalLogin(c *configtypes.Context) (err error) {

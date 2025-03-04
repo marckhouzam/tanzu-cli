@@ -73,7 +73,7 @@ func defaultDiscoverySourceForTMCTargetedContext(context *configtypes.Context) c
 }
 
 func defaultDiscoverySourceForTanzuTargetedContext(context string) (configtypes.PluginDiscovery, error) {
-	tanzuContextDiscoveryEndpointPath := strings.TrimSpace(os.Getenv(constants.TanzuPluginDiscoveryPathforTanzuContext))
+	tanzuContextDiscoveryEndpointPath := strings.TrimSpace(os.Getenv(constants.TanzuPluginDiscoveryHostforTanzuContext))
 	if tanzuContextDiscoveryEndpointPath == "" {
 		tanzuContextDiscoveryEndpointPath = constants.TanzuContextPluginDiscoveryEndpointPath
 	}
