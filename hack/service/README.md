@@ -8,7 +8,6 @@ The endpoints being mocked use SSL and are:
 
 - localhost:9443/cli/v1/install
 - localhost:9443/cli/v1/plugin/discovery
-- localhost:9443/cli/v1/binary
 
 ## Using the test CLI-Svc
 

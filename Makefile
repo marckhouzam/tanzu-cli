@@ -335,7 +335,6 @@ start-test-cli-service: stop-test-cli-service setup-custom-cert-for-test-cli-ser
 		-v $(ROOT_DIR)/hack/central-repo/certs:/certs \
 		-v $(ROOT_DIR)/hack/service/install.sh:/var/www/html/cli/v1/install/install.txt \
 		-v $(ROOT_DIR)/hack/service/discovery:/var/www/html/cli/v1/plugin/discovery \
-		-v $(ROOT_DIR)/hack/service/binaries:/var/www/html/cli/v1/binary \
 		-v $(ROOT_DIR)/hack/service/cli-service.conf:/etc/nginx/conf.d/cli-service.conf \
 		nginx:alpine > /dev/null && \
 	echo "Started docker test cli service at 'localhost:9443'"
