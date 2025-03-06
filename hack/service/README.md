@@ -6,8 +6,9 @@ real CLI-Svc.
 
 The endpoints being mocked use SSL and are:
 
-- localhost:9443/cli/v1/install
-- localhost:9443/cli/v1/plugin/discovery
+- localhost:9443/cli/v1/install/ (a script or instructions to install the CLI)
+- localhost:9443/cli/v1/plugin/discovery/ (used to know which plugins to install)
+- localhost:9443/cli/v1/plugins/ (directory structure of plugin binaries and inventory DB and central config file)
 
 ## Using the test CLI-Svc
 

@@ -331,13 +331,13 @@ setup-custom-cert-for-test-cli-service: ## Setup up the custom ca cert for the t
 
 .PHONY: start-test-cli-service
 start-test-cli-service: stop-test-cli-service setup-custom-cert-for-test-cli-service ## Starts a test CLI service locally with docker
-	@\rm -rf $(ROOT_DIR)/hack/service/plugins/vmware
-	$(ROOT_DIR)/hack/service/plugins/generate-plugins.sh
+	@\rm -rf $(ROOT_DIR)/hack/service/plugins
+	$(ROOT_DIR)/hack/service/generate-cli-svc-files.sh
 	@docker run -d --rm --name cli-service -p 9443:443 \
 		-v $(ROOT_DIR)/hack/central-repo/certs:/certs \
 		-v $(ROOT_DIR)/hack/service/install.sh:/var/www/html/cli/v1/install/install.txt \
 		-v $(ROOT_DIR)/hack/service/discovery:/var/www/html/cli/v1/plugin/discovery \
-		-v $(ROOT_DIR)/hack/service/plugins/vmware:/var/www/html/cli/v1/plugins/vmware \
+		-v $(ROOT_DIR)/hack/service/plugins:/var/www/html/cli/v1/plugins \
 		-v $(ROOT_DIR)/hack/service/cli-service.conf:/etc/nginx/conf.d/cli-service.conf \
 		nginx:alpine > /dev/null && \
 	echo "Started docker test cli service at 'localhost:9443'"
